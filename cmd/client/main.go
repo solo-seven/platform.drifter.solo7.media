@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/logger"
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/network"
 	"github.com/spf13/cobra"
 )
@@ -67,8 +68,15 @@ func runClient(cmd *cobra.Command, args []string) {
 	fmt.Println("Connected to server successfully!")
 
 	// Create client connection
-	logger := &consoleLogger{verbose: verbose}
-	clientConn := network.NewWebSocketConnection(conn, uuid.MustParse(playerID), logger)
+	loggerFactory := logger.NewLoggerFactory()
+	gameLogger, err := loggerFactory.CreateLogger("game-client",
+		logger.WithVerbose(verbose),
+		logger.WithLevel(logger.InfoLevel))
+	if err != nil {
+		log.Fatalf("Failed to create logger: %v", err)
+	}
+	defer gameLogger.(*logger.OTelLogger).Close()
+	clientConn := network.NewWebSocketConnection(conn, uuid.MustParse(playerID), gameLogger)
 
 	// Set up context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -313,34 +321,4 @@ func handleChatCommand(ctx context.Context, conn domain.ClientConnection, args [
 	}
 
 	return conn.Send(ctx, chatMessage)
-}
-
-// Console logger implementation
-type consoleLogger struct {
-	verbose bool
-}
-
-func (l *consoleLogger) Debug(msg string, fields map[string]interface{}) {
-	if l.verbose {
-		fmt.Printf("DEBUG: %s %+v\n", msg, fields)
-	}
-}
-
-func (l *consoleLogger) Info(msg string, fields map[string]interface{}) {
-	if l.verbose {
-		fmt.Printf("INFO: %s %+v\n", msg, fields)
-	}
-}
-
-func (l *consoleLogger) Warn(msg string, fields map[string]interface{}) {
-	fmt.Printf("WARN: %s %+v\n", msg, fields)
-}
-
-func (l *consoleLogger) Error(msg string, fields map[string]interface{}) {
-	fmt.Printf("ERROR: %s %+v\n", msg, fields)
-}
-
-func (l *consoleLogger) Fatal(msg string, fields map[string]interface{}) {
-	fmt.Printf("FATAL: %s %+v\n", msg, fields)
-	os.Exit(1)
 }

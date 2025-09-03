@@ -170,6 +170,11 @@ type Configuration interface {
 	GetLogLevel() string
 	GetDatabaseURL() string
 	GetRedisURL() string
+	// Logging configuration methods
+	GetLogVerbose() bool
+	GetLogOutput() string
+	GetLogFilePath() string
+	GetLogServiceName() string
 }
 
 // GameMechanicManager handles game mechanics registration and management

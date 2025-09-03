@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/logger"
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/network"
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/server"
 	"github.com/spf13/viper"
@@ -29,16 +30,21 @@ func main() {
 	// Load configuration
 	config := loadConfig()
 
-	// Create logger
-	logger := &consoleLogger{verbose: *verbose}
+	// Create logger from configuration
+	loggerFactory := logger.NewLoggerFactory()
+	gameLogger, err := loggerFactory.CreateLoggerFromConfig(config, *verbose)
+	if err != nil {
+		log.Fatalf("Failed to create logger: %v", err)
+	}
+	defer gameLogger.(*logger.OTelLogger).Close()
 
 	// Create server components
-	cm := network.NewConnectionManager(logger)
-	protocol := network.NewWebSocketProtocol(logger)
+	cm := network.NewConnectionManager(gameLogger)
+	protocol := network.NewWebSocketProtocol(gameLogger)
 	protocol.SetConnectionManager(cm)
 
 	// Create game server
-	gameServer := server.NewGameServer(config, cm, protocol, logger)
+	gameServer := server.NewGameServer(config, cm, protocol, gameLogger)
 
 	// Set up HTTP server with WebSocket endpoint
 	mux := http.NewServeMux()
@@ -51,13 +57,13 @@ func main() {
 
 	// Start server
 	go func() {
-		logger.Info("Starting server", map[string]interface{}{
+		gameLogger.Info("Starting server", map[string]interface{}{
 			"port":        *port,
 			"config_file": *configFile,
 		})
 
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("Failed to start server", map[string]interface{}{
+			gameLogger.Fatal("Failed to start server", map[string]interface{}{
 				"error": err,
 			})
 		}
@@ -68,7 +74,7 @@ func main() {
 	defer cancel()
 
 	if err := gameServer.Start(ctx); err != nil {
-		logger.Fatal("Failed to start game server", map[string]interface{}{
+		gameLogger.Fatal("Failed to start game server", map[string]interface{}{
 			"error": err,
 		})
 	}
@@ -79,11 +85,11 @@ func main() {
 
 	// Wait for shutdown signal
 	<-sigChan
-	logger.Info("Shutting down server...", nil)
+	gameLogger.Info("Shutting down server...", nil)
 
 	// Shutdown game server
 	if err := gameServer.Stop(ctx); err != nil {
-		logger.Error("Error stopping game server", map[string]interface{}{
+		gameLogger.Error("Error stopping game server", map[string]interface{}{
 			"error": err,
 		})
 	}
@@ -93,12 +99,12 @@ func main() {
 	defer shutdownCancel()
 
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		logger.Error("Error shutting down HTTP server", map[string]interface{}{
+		gameLogger.Error("Error shutting down HTTP server", map[string]interface{}{
 			"error": err,
 		})
 	}
 
-	logger.Info("Server shutdown complete", nil)
+	gameLogger.Info("Server shutdown complete", nil)
 }
 
 func loadConfig() domain.Configuration {
@@ -114,6 +120,13 @@ func loadConfig() domain.Configuration {
 	viper.SetDefault("server.log_level", "info")
 	viper.SetDefault("server.database_url", "")
 	viper.SetDefault("server.redis_url", "")
+
+	// Set logging defaults
+	viper.SetDefault("logging.level", "info")
+	viper.SetDefault("logging.output", "console")
+	viper.SetDefault("logging.verbose", false)
+	viper.SetDefault("logging.file_path", "logs/game-server.log")
+	viper.SetDefault("logging.service_name", "game-server")
 
 	// Read config file
 	if err := viper.ReadInConfig(); err != nil {
@@ -131,6 +144,11 @@ func loadConfig() domain.Configuration {
 		logLevel:             viper.GetString("server.log_level"),
 		databaseURL:          viper.GetString("server.database_url"),
 		redisURL:             viper.GetString("server.redis_url"),
+		// Logging configuration
+		logVerbose:     viper.GetBool("logging.verbose"),
+		logOutput:      viper.GetString("logging.output"),
+		logFilePath:    viper.GetString("logging.file_path"),
+		logServiceName: viper.GetString("logging.service_name"),
 	}
 }
 
@@ -144,6 +162,11 @@ type configImpl struct {
 	logLevel             string
 	databaseURL          string
 	redisURL             string
+	// Logging configuration
+	logVerbose     bool
+	logOutput      string
+	logFilePath    string
+	logServiceName string
 }
 
 func (c *configImpl) GetServerPort() int {
@@ -178,30 +201,19 @@ func (c *configImpl) GetRedisURL() string {
 	return c.redisURL
 }
 
-// Console logger implementation
-type consoleLogger struct {
-	verbose bool
+// Logging configuration methods
+func (c *configImpl) GetLogVerbose() bool {
+	return c.logVerbose
 }
 
-func (l *consoleLogger) Debug(msg string, fields map[string]interface{}) {
-	if l.verbose {
-		fmt.Printf("DEBUG: %s %+v\n", msg, fields)
-	}
+func (c *configImpl) GetLogOutput() string {
+	return c.logOutput
 }
 
-func (l *consoleLogger) Info(msg string, fields map[string]interface{}) {
-	fmt.Printf("INFO: %s %+v\n", msg, fields)
+func (c *configImpl) GetLogFilePath() string {
+	return c.logFilePath
 }
 
-func (l *consoleLogger) Warn(msg string, fields map[string]interface{}) {
-	fmt.Printf("WARN: %s %+v\n", msg, fields)
-}
-
-func (l *consoleLogger) Error(msg string, fields map[string]interface{}) {
-	fmt.Printf("ERROR: %s %+v\n", msg, fields)
-}
-
-func (l *consoleLogger) Fatal(msg string, fields map[string]interface{}) {
-	fmt.Printf("FATAL: %s %+v\n", msg, fields)
-	os.Exit(1)
+func (c *configImpl) GetLogServiceName() string {
+	return c.logServiceName
 }

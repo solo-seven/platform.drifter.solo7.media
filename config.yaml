@@ -49,7 +49,10 @@ network:
 logging:
   level: info
   format: json
-  output: stdout
+  output: console  # console, json, file
+  verbose: false
+  file_path: "logs/game-server.log"  # only used when output is "file"
+  service_name: "game-server"
   
 # Performance settings
 performance:
