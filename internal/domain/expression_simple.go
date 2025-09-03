@@ -139,6 +139,9 @@ func (sep *SimpleExpressionParser) Evaluate(expression string, ctx *ExpressionCo
 	// First, handle function calls
 	expression = sep.expandFunctionCalls(expression, ctx)
 
+	// Replace variables before making routing decision
+	expression = sep.ReplaceVariables(expression, ctx)
+
 	// Check if this is a string operation (contains quotes or comparison operators)
 	if strings.Contains(expression, "\"") || strings.Contains(expression, "==") || strings.Contains(expression, "!=") {
 		return sep.evaluateStringExpression(expression, ctx)
@@ -192,7 +195,7 @@ func (sep *SimpleExpressionParser) expandFunctionCalls(expression string, ctx *E
 				argsStr := strings.TrimSuffix(strings.Split(fullMatch, "(")[1], ")")
 
 				// Parse arguments
-				args := sep.parseArguments(argsStr)
+				args := sep.parseArguments(argsStr, ctx)
 
 				// Call the function
 				function := sep.functions[funcName]
@@ -264,7 +267,7 @@ func (sep *SimpleExpressionParser) evaluateSingleFunctionCall(expression string,
 		if strings.HasPrefix(expression, funcName+"(") {
 			// Extract arguments
 			argsStr := strings.TrimSuffix(strings.TrimPrefix(expression, funcName+"("), ")")
-			args := sep.parseArguments(argsStr)
+			args := sep.parseArguments(argsStr, ctx)
 
 			// Call the function
 			function := sep.functions[funcName]
@@ -360,7 +363,7 @@ func (sep *SimpleExpressionParser) evaluateStringExpression(expression string, c
 }
 
 // parseArguments parses function arguments from a string
-func (sep *SimpleExpressionParser) parseArguments(argsStr string) []interface{} {
+func (sep *SimpleExpressionParser) parseArguments(argsStr string, ctx *ExpressionContext) []interface{} {
 	if strings.TrimSpace(argsStr) == "" {
 		return []interface{}{}
 	}
@@ -371,23 +374,9 @@ func (sep *SimpleExpressionParser) parseArguments(argsStr string) []interface{} 
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
 
-		// Check if this part contains a function call or is a complex expression
-		if sep.containsFunctionCall(part) || sep.isComplexExpression(part) {
-			// Evaluate the expression with an empty context for now
-			// In a real implementation, we'd need to pass the proper context
-			result, err := sep.Evaluate(part, &ExpressionContext{})
-			if err == nil && result.Success {
-				args = append(args, result.Value)
-			} else {
-				// If evaluation fails, treat as string
-				args = append(args, part)
-			}
-			continue
-		}
-
-		// Try to parse as number
-		if num, err := strconv.ParseFloat(part, 64); err == nil {
-			args = append(args, num)
+		// Try to parse as string literal first (remove quotes)
+		if strings.HasPrefix(part, "\"") && strings.HasSuffix(part, "\"") {
+			args = append(args, part[1:len(part)-1])
 			continue
 		}
 
@@ -401,9 +390,39 @@ func (sep *SimpleExpressionParser) parseArguments(argsStr string) []interface{} 
 			continue
 		}
 
-		// Try to parse as string (remove quotes)
-		if strings.HasPrefix(part, "\"") && strings.HasSuffix(part, "\"") {
-			args = append(args, part[1:len(part)-1])
+		// Try to parse as number
+		if num, err := strconv.ParseFloat(part, 64); err == nil {
+			args = append(args, num)
+			continue
+		}
+
+		// Check if this part contains a function call or is a complex expression
+		if sep.containsFunctionCall(part) || sep.isComplexExpression(part) {
+			// Evaluate the expression with the provided context
+			result, err := sep.Evaluate(part, ctx)
+			if err == nil && result.Success {
+				// Convert the result to the appropriate type for function arguments
+				if result.Type == "dice_roll" {
+					// For dice rolls, use the numeric value
+					if val, ok := result.Value.(float64); ok {
+						args = append(args, val)
+					} else {
+						args = append(args, result.Value)
+					}
+				} else {
+					args = append(args, result.Value)
+				}
+			} else {
+				// If evaluation fails, treat as string
+				args = append(args, part)
+			}
+			continue
+		}
+
+		// Check if this is a variable reference
+		value := sep.GetContextValue(part, ctx)
+		if value != nil {
+			args = append(args, value)
 			continue
 		}
 
@@ -479,6 +498,54 @@ func (sep *SimpleExpressionParser) isComplexExpression(expr string) bool {
 
 // GetContextValue gets a value from the expression context
 func (sep *SimpleExpressionParser) GetContextValue(key string, ctx *ExpressionContext) interface{} {
+	// Handle dot notation (e.g., target.armor, self.level)
+	if strings.Contains(key, ".") {
+		parts := strings.Split(key, ".")
+		if len(parts) != 2 {
+			return nil // Only support one level of nesting for now
+		}
+
+		parentKey := parts[0]
+		childKey := parts[1]
+
+		// Map context section names to their actual context maps
+		var contextMap map[string]interface{}
+		switch parentKey {
+		case "self":
+			contextMap = ctx.Self
+		case "target":
+			contextMap = ctx.Target
+		case "party":
+			contextMap = ctx.Party
+		case "terrain":
+			contextMap = ctx.Terrain
+		case "game":
+			contextMap = ctx.Game
+		default:
+			// If it's not a known context section, check event data
+			if ctx.EventData != nil {
+				if parentValue, exists := ctx.EventData[parentKey]; exists {
+					if parentMap, ok := parentValue.(map[string]interface{}); ok {
+						if childValue, exists := parentMap[childKey]; exists {
+							return childValue
+						}
+					}
+				}
+			}
+			return nil
+		}
+
+		// Look for the child key in the appropriate context map
+		if contextMap != nil {
+			if childValue, exists := contextMap[childKey]; exists {
+				return childValue
+			}
+		}
+
+		return nil
+	}
+
+	// Handle simple variable names (no dot notation)
 	// Check context variables in order: self, target, party, terrain, game, event data
 	contexts := []map[string]interface{}{
 		ctx.Self, ctx.Target, ctx.Party, ctx.Terrain, ctx.Game,
@@ -502,8 +569,7 @@ func (sep *SimpleExpressionParser) GetContextValue(key string, ctx *ExpressionCo
 
 // evaluateSimpleExpression evaluates a simple mathematical expression
 func (sep *SimpleExpressionParser) evaluateSimpleExpression(expression string, ctx *ExpressionContext) (*ExpressionResult, error) {
-	// Replace variables with their values
-	expression = sep.ReplaceVariables(expression, ctx)
+	// Variables are already replaced in the main Evaluate function
 
 	// Check if this is a string expression (contains quotes or is a single string)
 	if strings.HasPrefix(expression, "\"") && strings.HasSuffix(expression, "\"") {
@@ -549,8 +615,8 @@ func (sep *SimpleExpressionParser) evaluateSimpleExpression(expression string, c
 
 // ReplaceVariables replaces variable references with their values
 func (sep *SimpleExpressionParser) ReplaceVariables(expression string, ctx *ExpressionContext) string {
-	// Find variable references (identifiers that aren't numbers or operators)
-	re := regexp.MustCompile(`\b[a-zA-Z_][a-zA-Z0-9_]*\b`)
+	// Find variable references including dot notation (e.g., target.armor, self.level)
+	re := regexp.MustCompile(`\b[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*\b`)
 
 	return re.ReplaceAllStringFunc(expression, func(match string) string {
 		// Skip if it's a boolean literal
@@ -558,7 +624,7 @@ func (sep *SimpleExpressionParser) ReplaceVariables(expression string, ctx *Expr
 			return match
 		}
 
-		// Get value from context
+		// Get value from context (handles both simple and dot notation)
 		value := sep.GetContextValue(match, ctx)
 		if value != nil {
 			switch v := value.(type) {
@@ -600,16 +666,16 @@ func (sep *SimpleExpressionParser) evaluateMathExpression(expression string) (fl
 	expression = strings.ReplaceAll(expression, "true", "1")
 	expression = strings.ReplaceAll(expression, "false", "0")
 
-	// Handle comparison operators first (they have higher precedence than boolean ops)
+	// Handle boolean operations first (they have lower precedence than comparisons)
+	if strings.Contains(expression, "&&") || strings.Contains(expression, "||") {
+		return sep.evaluateBooleanOperation(expression)
+	}
+
+	// Handle comparison operators (they have higher precedence than boolean ops)
 	if strings.Contains(expression, ">=") || strings.Contains(expression, "<=") ||
 		strings.Contains(expression, ">") || strings.Contains(expression, "<") ||
 		strings.Contains(expression, "==") || strings.Contains(expression, "!=") {
 		return sep.evaluateComparison(expression)
-	}
-
-	// Handle boolean operations
-	if strings.Contains(expression, "&&") || strings.Contains(expression, "||") {
-		return sep.evaluateBooleanOperation(expression)
 	}
 
 	// Handle basic arithmetic
@@ -757,73 +823,82 @@ func (sep *SimpleExpressionParser) evaluateComparison(expression string) (float6
 
 // evaluateBooleanOperation evaluates boolean operations
 func (sep *SimpleExpressionParser) evaluateBooleanOperation(expression string) (float64, error) {
-	// Handle multiple && operations
+	// Handle && operations (higher precedence than ||)
 	for strings.Contains(expression, "&&") {
-		parts := strings.Split(expression, "&&")
-		if len(parts) >= 2 {
-			// Evaluate the first two parts
-			left, err1 := sep.evaluateMathExpression(strings.TrimSpace(parts[0]))
-			right, err2 := sep.evaluateMathExpression(strings.TrimSpace(parts[1]))
-
-			if err1 != nil || err2 != nil {
-				return 0, fmt.Errorf("error evaluating boolean operation")
-			}
-
-			// Convert to boolean: 0 is false, anything else is true
-			leftBool := left != 0
-			rightBool := right != 0
-
-			result := 0.0
-			if leftBool && rightBool {
-				result = 1.0
-			}
-
-			// If there are more parts, continue with the result
-			if len(parts) > 2 {
-				remaining := strings.Join(parts[2:], "&&")
-				expression = fmt.Sprintf("%.0f && %s", result, remaining)
-			} else {
-				return result, nil
-			}
-		} else {
+		// Find the rightmost && to handle left associativity
+		lastAndIndex := strings.LastIndex(expression, "&&")
+		if lastAndIndex == -1 {
 			break
 		}
+
+		left := strings.TrimSpace(expression[:lastAndIndex])
+		right := strings.TrimSpace(expression[lastAndIndex+2:])
+
+		// Evaluate left and right sides
+		leftResult, err1 := sep.evaluateMathExpression(left)
+		rightResult, err2 := sep.evaluateMathExpression(right)
+
+		if err1 != nil || err2 != nil {
+			return 0, fmt.Errorf("error evaluating boolean operation: %v, %v", err1, err2)
+		}
+
+		// Convert to boolean: 0 is false, anything else is true
+		leftBool := leftResult != 0
+		rightBool := rightResult != 0
+
+		result := 0.0
+		if leftBool && rightBool {
+			result = 1.0
+		}
+
+		// Replace the entire expression with the result
+		expression = fmt.Sprintf("%.0f", result)
 	}
 
-	// Handle multiple || operations
+	// Handle || operations
 	for strings.Contains(expression, "||") {
-		parts := strings.Split(expression, "||")
-		if len(parts) >= 2 {
-			// Evaluate the first two parts
-			left, err1 := sep.evaluateMathExpression(strings.TrimSpace(parts[0]))
-			right, err2 := sep.evaluateMathExpression(strings.TrimSpace(parts[1]))
-
-			if err1 != nil || err2 != nil {
-				return 0, fmt.Errorf("error evaluating boolean operation")
-			}
-
-			// Convert to boolean: 0 is false, anything else is true
-			leftBool := left != 0
-			rightBool := right != 0
-
-			result := 0.0
-			if leftBool || rightBool {
-				result = 1.0
-			}
-
-			// If there are more parts, continue with the result
-			if len(parts) > 2 {
-				remaining := strings.Join(parts[2:], "||")
-				expression = fmt.Sprintf("%.0f || %s", result, remaining)
-			} else {
-				return result, nil
-			}
-		} else {
+		// Find the rightmost || to handle left associativity
+		lastOrIndex := strings.LastIndex(expression, "||")
+		if lastOrIndex == -1 {
 			break
 		}
+
+		left := strings.TrimSpace(expression[:lastOrIndex])
+		right := strings.TrimSpace(expression[lastOrIndex+2:])
+
+		// Evaluate left and right sides
+		leftResult, err1 := sep.evaluateMathExpression(left)
+		rightResult, err2 := sep.evaluateMathExpression(right)
+
+		if err1 != nil || err2 != nil {
+			return 0, fmt.Errorf("error evaluating boolean operation: %v, %v", err1, err2)
+		}
+
+		// Convert to boolean: 0 is false, anything else is true
+		leftBool := leftResult != 0
+		rightBool := rightResult != 0
+
+		result := 0.0
+		if leftBool || rightBool {
+			result = 1.0
+		}
+
+		// Replace the entire expression with the result
+		expression = fmt.Sprintf("%.0f", result)
 	}
 
-	return 0, fmt.Errorf("invalid boolean operation: %s", expression)
+	// If we still have boolean operators, something went wrong
+	if strings.Contains(expression, "&&") || strings.Contains(expression, "||") {
+		return 0, fmt.Errorf("invalid boolean operation: %s", expression)
+	}
+
+	// Parse the final result
+	result, err := strconv.ParseFloat(expression, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid boolean result: %s", expression)
+	}
+
+	return result, nil
 }
 
 // evaluateArithmetic evaluates arithmetic expressions
@@ -879,31 +954,16 @@ func (sep *SimpleExpressionParser) evaluateArithmetic(expression string) (float6
 			}
 		}
 
-		if matchStart == 0 && matchEnd == 0 {
-			// If no match found, try a simpler approach
-			// Find the rightmost ^ and process it
-			re = regexp.MustCompile(`(\d+(?:\.\d+)?)\s*\^\s*(\d+(?:\.\d+)?)`)
-			expression = re.ReplaceAllStringFunc(expression, func(match string) string {
-				parts := re.FindStringSubmatch(match)
-				if len(parts) == 3 {
-					base, _ := strconv.ParseFloat(parts[1], 64)
-					exp, _ := strconv.ParseFloat(parts[2], 64)
-					result := math.Pow(base, exp)
-					return fmt.Sprintf("%.0f", result)
-				}
-				return match
-			})
-			break
-		}
-
-		// Extract and evaluate this specific match
-		matchStr := expression[matchStart:matchEnd]
-		parts := re.FindStringSubmatch(matchStr)
-		if len(parts) == 3 {
-			base, _ := strconv.ParseFloat(parts[1], 64)
-			exp, _ := strconv.ParseFloat(parts[2], 64)
-			result := math.Pow(base, exp)
-			expression = expression[:matchStart] + fmt.Sprintf("%.0f", result) + expression[matchEnd:]
+		if matchStart != 0 || matchEnd != 0 {
+			// Extract and evaluate this specific match
+			matchStr := expression[matchStart:matchEnd]
+			parts := re.FindStringSubmatch(matchStr)
+			if len(parts) == 3 {
+				base, _ := strconv.ParseFloat(parts[1], 64)
+				exp, _ := strconv.ParseFloat(parts[2], 64)
+				result := math.Pow(base, exp)
+				expression = expression[:matchStart] + fmt.Sprintf("%.0f", result) + expression[matchEnd:]
+			}
 		} else {
 			break
 		}
@@ -976,17 +1036,45 @@ func (sep *SimpleExpressionParser) evaluateArithmetic(expression string) (float6
 		})
 
 		// Subtraction (left associative) - handle negative numbers
-		re = regexp.MustCompile(`(-?\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)`)
-		expression = re.ReplaceAllStringFunc(expression, func(match string) string {
-			parts := re.FindStringSubmatch(match)
-			if len(parts) == 3 {
-				left, _ := strconv.ParseFloat(parts[1], 64)
-				right, _ := strconv.ParseFloat(parts[2], 64)
-				result := left - right
-				return fmt.Sprintf("%.0f", result)
+		// Find the first subtraction operator that's not at the beginning
+		firstMinusIndex := -1
+		for i, char := range expression {
+			if char == '-' && i > 0 {
+				// Check if this is not part of a negative number
+				if i > 0 && (expression[i-1] == ' ' || expression[i-1] == '+' || expression[i-1] == '-' || expression[i-1] == '*' || expression[i-1] == '/' || expression[i-1] == '%' || expression[i-1] == '^') {
+					firstMinusIndex = i
+					break
+				}
 			}
-			return match
-		})
+		}
+
+		if firstMinusIndex != -1 {
+			// Find the numbers around this operator
+			re := regexp.MustCompile(`(-?\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)`)
+			matches := re.FindAllStringIndex(expression, -1)
+
+			// Find the match that contains our firstMinusIndex
+			var matchStart, matchEnd int
+			for _, match := range matches {
+				if match[0] <= firstMinusIndex && firstMinusIndex <= match[1] {
+					matchStart = match[0]
+					matchEnd = match[1]
+					break
+				}
+			}
+
+			if matchStart != 0 || matchEnd != 0 {
+				// Extract and evaluate this specific match
+				matchStr := expression[matchStart:matchEnd]
+				parts := re.FindStringSubmatch(matchStr)
+				if len(parts) == 3 {
+					left, _ := strconv.ParseFloat(parts[1], 64)
+					right, _ := strconv.ParseFloat(parts[2], 64)
+					result := left - right
+					expression = expression[:matchStart] + fmt.Sprintf("%.0f", result) + expression[matchEnd:]
+				}
+			}
+		}
 
 		// If no progress was made in this iteration, break to avoid infinite loop
 		if expression == prev {
