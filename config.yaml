@@ -1,0 +1,71 @@
+server:
+  port: 8080
+  max_connections: 1000
+  heartbeat_interval: 30s
+  region_size: 1000.0
+  max_entities_per_region: 1000
+  log_level: info
+  database_url: ""
+  redis_url: ""
+
+# Game configuration
+game:
+  # Default region settings
+  default_region:
+    id: "default"
+    name: "Starting Area"
+    size: 1000.0
+    
+  # Player settings
+  player:
+    starting_position:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    starting_health: 100.0
+    starting_mana: 50.0
+    
+  # World settings
+  world:
+    time_scale: 1.0
+    day_length: 1440  # minutes
+    weather_enabled: true
+    
+# Network configuration
+network:
+  # WebSocket settings
+  websocket:
+    read_buffer_size: 1024
+    write_buffer_size: 1024
+    max_message_size: 10240
+    
+  # Connection settings
+  connection:
+    handshake_timeout: 10s
+    ping_interval: 30s
+    pong_timeout: 60s
+    
+# Logging configuration
+logging:
+  level: info
+  format: json
+  output: stdout
+  
+# Performance settings
+performance:
+  # Game loop settings
+  game_loop:
+    target_fps: 60
+    max_frame_time: 16ms
+    
+  # Entity management
+  entity:
+    max_entities_per_region: 1000
+    entity_cleanup_interval: 5m
+    
+  # Network optimization
+  network:
+    batch_updates: true
+    update_frequency: 10  # Hz
+    interest_management: true
+
