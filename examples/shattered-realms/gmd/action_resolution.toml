@@ -1,0 +1,26 @@
+# gmd/action_resolution.toml
+
+[resolution_methods.stability_check]
+id = "resolution.stability_check"
+name = "Reality Stability Check"
+applicable_actions = ["stabilize", "chaos_surge", "dimensional_travel"]
+inputs = ["skill_modifier", "reality_stability", "environmental_modifiers"]
+calculation = '''
+  base_roll = roll("1d20") + skill_modifier;
+  stability_bonus = reality_stability > 75 ? 2 : (reality_stability < 25 ? -3 : 0);
+  total = base_roll + stability_bonus + environmental_modifiers;
+  return total
+'''
+
+[conflict_resolution.magic_vs_stability]
+priority = 100
+scope = "magical_actions"
+rule = '''
+  if (action.type == "magical" && reality_stability < 50) {
+    add_modifier(action, "unstable_magic", -2);
+    chance_of_side_effect = (50 - reality_stability) / 10;
+    if (roll("1d10") <= chance_of_side_effect) {
+      trigger_wild_magic()
+    }
+  }
+'''

@@ -1,0 +1,41 @@
+# wb/environmental/reality_weather.toml
+
+[environmental_systems.reality_weather]
+id = "system.reality_weather"
+name = "Reality Weather Patterns"
+affected_locations = ["all_outdoor"]
+system_type = "metaphysical_weather"
+
+[environmental_systems.reality_weather.patterns.stability_storm]
+name = "Stability Storm"
+frequency = "weekly"
+duration = "2d6_hours"
+conditions = [
+  'reality_stability increases by 2 per hour',
+  'chaos_abilities suffer disadvantage', 
+  'stabilizer_items recharge faster'
+]
+side_effects = [
+  'magic_items_glow_brightly',
+  'chaotic_creatures_seek_shelter'
+]
+
+[environmental_systems.reality_weather.patterns.chaos_winds]
+name = "Chaos Winds"
+frequency = "bi_weekly"
+duration = "1d4_hours"
+intensity_levels = ["light", "moderate", "severe"]
+
+[environmental_systems.reality_weather.patterns.chaos_winds.effects.light]
+reality_stability_modifier = -1
+spell_failure_chance = 0.05
+random_color_changes = true
+
+[environmental_systems.reality_weather.patterns.chaos_winds.effects.severe] 
+reality_stability_modifier = -5
+spell_failure_chance = 0.25
+effects = [
+  'random_polymorph(duration="10_minutes", chance=0.1)',
+  'temporary_ability_score_swap',
+  'spoken_words_become_visible'
+]

@@ -1,0 +1,44 @@
+# pg/equipment.toml
+
+[items.stabilizer_crystal]
+id = "item.stabilizer_crystal"
+name = "Stabilizer Crystal"
+type = "wondrous_item"
+rarity = "uncommon"
+attunement_required = false
+
+[items.stabilizer_crystal.properties]
+reality_anchor = {
+  effect = 'increase_local_stability(amount=10, radius=30)',
+  duration = "permanent_while_held"
+}
+
+fragile = {
+  condition = 'reality_stability <= 15',
+  effect = 'item_destroyed(); reality_stability -= 5'
+}
+
+[items.chaos_blade]
+id = "item.chaos_blade"
+name = "Chaos Blade"  
+type = "weapon"
+weapon_type = "longsword"
+damage = "1d8"
+magical = true
+attunement_required = true
+
+[items.chaos_blade.properties]
+variable_damage = {
+  effect = '''
+    base_damage = roll("1d8");
+    if (reality_stability < 50) {
+      extra_damage = roll("1d6");
+      damage_type = random_choice(["fire", "cold", "lightning", "thunder"])
+    }
+    return base_damage + extra_damage
+  '''
+}
+
+reality_disruption = {
+  on_critical = 'target_location.reality_stability -= roll("1d4")'
+}

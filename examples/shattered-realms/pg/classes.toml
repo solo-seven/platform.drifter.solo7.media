@@ -1,0 +1,44 @@
+# pg/classes.toml
+
+[classes.reality_warden]
+id = "class.reality_warden"
+name = "Reality Warden"
+description = "Guardians who maintain the stability of existence"
+hit_die = "d8"
+primary_attributes = ["wisdom", "constitution"]
+save_proficiencies = ["wisdom", "constitution"]
+
+[classes.reality_warden.features.level_1.anchor_point]
+name = "Anchor Point"
+description = "Designate a location as a reality anchor"
+uses = { per = "long_rest", count = 1 }
+effect = '''
+  anchor_location.reality_stability = max(anchor_location.reality_stability, 75);
+  anchor_location.stability_decay = false;
+  duration = "24_hours"
+'''
+
+[classes.reality_warden.features.level_3.detect_fractures]
+name = "Detect Fractures"
+uses = { per = "short_rest", count = 3 }
+effect = 'reveal_all_fractures(range = 120); highlight_danger_zones()'
+
+[classes.chaos_dancer]
+id = "class.chaos_dancer"
+name = "Chaos Dancer"
+description = "Martial artists who channel instability"
+hit_die = "d10" 
+primary_attributes = ["dexterity", "chaos_affinity"]
+
+[classes.chaos_dancer.features.level_1.unpredictable_strikes]
+name = "Unpredictable Strikes"
+description = "Attacks become more powerful in unstable reality"
+effect = '''
+  if (reality_stability < 50) {
+    add_damage_dice(1);
+    if (reality_stability < 25) {
+      add_damage_dice(1);
+      chance_teleport_after_attack = 0.3
+    }
+  }
+'''
