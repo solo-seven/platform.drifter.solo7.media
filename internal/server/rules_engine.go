@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,16 +14,18 @@ import (
 
 // RulesEngineImpl implements the RulesEngine interface
 type RulesEngineImpl struct {
-	rules  map[domain.RuleId]*domain.GameRule
-	mu     sync.RWMutex
-	logger domain.Logger
+	rules            map[domain.RuleId]*domain.GameRule
+	expressionParser *domain.SimpleExpressionParser
+	mu               sync.RWMutex
+	logger           domain.Logger
 }
 
 // NewRulesEngine creates a new rules engine
 func NewRulesEngine(logger domain.Logger) *RulesEngineImpl {
 	return &RulesEngineImpl{
-		rules:  make(map[domain.RuleId]*domain.GameRule),
-		logger: logger,
+		rules:            make(map[domain.RuleId]*domain.GameRule),
+		expressionParser: domain.NewSimpleExpressionParser(),
+		logger:           logger,
 	}
 }
 
@@ -83,7 +87,9 @@ func (re *RulesEngineImpl) ProcessEvent(ctx context.Context, event domain.EventT
 	}
 
 	// Sort rules by priority (higher priority first)
-	// TODO: Implement proper sorting
+	sort.Slice(applicableRules, func(i, j int) bool {
+		return applicableRules[i].Priority > applicableRules[j].Priority
+	})
 
 	// Execute applicable rules
 	for _, rule := range applicableRules {
@@ -150,9 +156,18 @@ func (re *RulesEngineImpl) evaluateConditions(conditions []domain.Condition, dat
 		return true
 	}
 
+	// Create expression context from event data
+	ctx := &domain.ExpressionContext{
+		Self:    extractEntityData(data, "self"),
+		Target:  extractEntityData(data, "target"),
+		Party:   extractEntityData(data, "party"),
+		Terrain: extractEntityData(data, "terrain"),
+		Game:    extractEntityData(data, "game"),
+	}
+
 	// All conditions must be true (AND logic)
 	for _, condition := range conditions {
-		if !re.evaluateCondition(condition, data) {
+		if !re.evaluateCondition(condition, ctx) {
 			return false
 		}
 	}
@@ -160,30 +175,41 @@ func (re *RulesEngineImpl) evaluateConditions(conditions []domain.Condition, dat
 	return true
 }
 
-// evaluateCondition evaluates a single condition
-func (re *RulesEngineImpl) evaluateCondition(condition domain.Condition, data map[string]interface{}) bool {
-	// Get the value from data
-	value, exists := data[condition.Property]
-	if !exists {
+// evaluateCondition evaluates a single condition using the expression parser
+func (re *RulesEngineImpl) evaluateCondition(condition domain.Condition, ctx *domain.ExpressionContext) bool {
+	// Build expression from condition
+	var expression string
+
+	// If condition has an expression, use it directly
+	if condition.Type == "expression" {
+		expression = condition.Property
+	} else {
+		// Build simple comparison expression
+		expression = fmt.Sprintf("%s %s %v", condition.Property, condition.Operator, condition.Value)
+	}
+
+	// Evaluate the expression
+	result, err := re.expressionParser.Evaluate(expression, ctx)
+	if err != nil {
+		re.logger.Warn("Failed to evaluate condition", map[string]interface{}{
+			"condition":  condition,
+			"expression": expression,
+			"error":      err,
+		})
 		return false
 	}
 
-	// Simple string comparison for now
-	// TODO: Implement more sophisticated condition evaluation
-	switch condition.Operator {
-	case "==":
-		return fmt.Sprintf("%v", value) == condition.Value
-	case "!=":
-		return fmt.Sprintf("%v", value) != condition.Value
-	case ">":
-		// TODO: Implement numeric comparison
-		return false
-	case "<":
-		// TODO: Implement numeric comparison
-		return false
-	default:
+	if !result.Success {
+		re.logger.Warn("Condition evaluation failed", map[string]interface{}{
+			"condition":  condition,
+			"expression": expression,
+			"error":      result.Error,
+		})
 		return false
 	}
+
+	// Convert result to boolean
+	return re.toBool(result.Value)
 }
 
 // executeRule executes a rule and returns the result
@@ -223,33 +249,91 @@ func (re *RulesEngineImpl) executeAction(ctx context.Context, action domain.Acti
 		AestheticEvents:     []domain.AestheticEventData{},
 	}
 
+	// Create expression context for action execution
+	exprCtx := &domain.ExpressionContext{
+		Self:    extractEntityData(data, "self"),
+		Target:  extractEntityData(data, "target"),
+		Party:   extractEntityData(data, "party"),
+		Terrain: extractEntityData(data, "terrain"),
+		Game:    extractEntityData(data, "game"),
+	}
+
 	switch action.Type {
+	case "expression":
+		// Execute an expression directly
+		expression, ok := action.Properties["expression"].(string)
+		if !ok {
+			return nil, fmt.Errorf("expression action requires 'expression' property")
+		}
+
+		exprResult, err := re.expressionParser.Evaluate(expression, exprCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to evaluate expression: %v", err)
+		}
+
+		if !exprResult.Success {
+			return nil, fmt.Errorf("expression evaluation failed: %s", exprResult.Error)
+		}
+
+		// Store result in action metadata
+		if action.Properties == nil {
+			action.Properties = make(map[string]interface{})
+		}
+		action.Properties["result"] = exprResult.Value
+		action.Properties["result_type"] = exprResult.Type
+
 	case "state_change":
-		// Create a state change
+		// Create a state change with evaluated properties
+		evaluatedProps := re.evaluateActionProperties(action.Properties, exprCtx)
+
+		entityID, err := re.extractEntityID(data, "entity_id")
+		if err != nil {
+			return nil, fmt.Errorf("invalid entity_id: %v", err)
+		}
+
 		change := domain.StateChange{
-			EntityID:  uuid.MustParse(data["entity_id"].(string)),
+			EntityID:  entityID,
 			Component: action.Target,
-			Changes:   action.Properties,
+			Changes:   evaluatedProps,
 			Timestamp: time.Now(),
 		}
 		result.WorldStateChanges = append(result.WorldStateChanges, change)
 
 	case "notification":
-		// Create a client notification
+		// Create a client notification with evaluated properties
+		evaluatedProps := re.evaluateActionProperties(action.Properties, exprCtx)
+
+		playerID, err := re.extractEntityID(data, "player_id")
+		if err != nil {
+			return nil, fmt.Errorf("invalid player_id: %v", err)
+		}
+
+		message, ok := evaluatedProps["message"].(string)
+		if !ok {
+			message = "System notification"
+		}
+
 		notification := domain.ClientNotification{
-			PlayerID:   uuid.MustParse(data["player_id"].(string)),
+			PlayerID:   playerID,
 			Type:       action.Target,
-			Message:    action.Properties["message"].(string),
-			Properties: action.Properties,
+			Message:    message,
+			Properties: evaluatedProps,
 		}
 		result.ClientNotifications = append(result.ClientNotifications, notification)
 
 	case "aesthetic_event":
-		// Create an aesthetic event
+		// Create an aesthetic event with evaluated properties
+		evaluatedProps := re.evaluateActionProperties(action.Properties, exprCtx)
+
+		entityID, err := re.extractEntityID(data, "entity_id")
+		if err != nil {
+			return nil, fmt.Errorf("invalid entity_id: %v", err)
+		}
+
 		aestheticEvent := domain.AestheticEventData{
 			Type:       action.Target,
-			EntityID:   uuid.MustParse(data["entity_id"].(string)),
-			Properties: action.Properties,
+			EntityID:   entityID,
+			Properties: evaluatedProps,
 			Timestamp:  time.Now(),
 		}
 		result.AestheticEvents = append(result.AestheticEvents, aestheticEvent)
@@ -261,4 +345,99 @@ func (re *RulesEngineImpl) executeAction(ctx context.Context, action domain.Acti
 	}
 
 	return result, nil
+}
+
+// Helper functions
+
+// extractEntityData extracts entity data from event data
+func extractEntityData(data map[string]interface{}, key string) map[string]interface{} {
+	if entityData, exists := data[key]; exists {
+		if entityMap, ok := entityData.(map[string]interface{}); ok {
+			return entityMap
+		}
+	}
+	return make(map[string]interface{})
+}
+
+// extractEntityID extracts and parses an entity ID from data
+func (re *RulesEngineImpl) extractEntityID(data map[string]interface{}, key string) (domain.EntityId, error) {
+	entityIDStr, exists := data[key]
+	if !exists {
+		return domain.EntityId{}, fmt.Errorf("missing %s in event data", key)
+	}
+
+	switch v := entityIDStr.(type) {
+	case string:
+		return uuid.Parse(v)
+	case domain.EntityId:
+		return v, nil
+	default:
+		return domain.EntityId{}, fmt.Errorf("invalid %s type: %T", key, entityIDStr)
+	}
+}
+
+// evaluateActionProperties evaluates expressions in action properties
+func (re *RulesEngineImpl) evaluateActionProperties(properties map[string]interface{}, ctx *domain.ExpressionContext) map[string]interface{} {
+	if properties == nil {
+		return make(map[string]interface{})
+	}
+
+	evaluated := make(map[string]interface{})
+
+	for key, value := range properties {
+		if strValue, ok := value.(string); ok && re.isExpression(strValue) {
+			// Evaluate as expression
+			result, err := re.expressionParser.Evaluate(strValue, ctx)
+			if err != nil {
+				re.logger.Warn("Failed to evaluate property expression", map[string]interface{}{
+					"key":   key,
+					"value": strValue,
+					"error": err,
+				})
+				evaluated[key] = value // Use original value on error
+			} else if result.Success {
+				evaluated[key] = result.Value
+			} else {
+				re.logger.Warn("Property expression evaluation failed", map[string]interface{}{
+					"key":   key,
+					"value": strValue,
+					"error": result.Error,
+				})
+				evaluated[key] = value // Use original value on error
+			}
+		} else {
+			// Use value as-is
+			evaluated[key] = value
+		}
+	}
+
+	return evaluated
+}
+
+// isExpression checks if a string looks like an expression
+func (re *RulesEngineImpl) isExpression(str string) bool {
+	// Simple heuristic: if it contains operators, variables, or function calls, it's likely an expression
+	operators := []string{"+", "-", "*", "/", "==", "!=", "<", ">", "&&", "||", "roll(", "deal(", "heal(", "has_tag(", "has_ability("}
+
+	for _, op := range operators {
+		if strings.Contains(str, op) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// toBool converts a value to boolean
+func (re *RulesEngineImpl) toBool(value interface{}) bool {
+	switch v := value.(type) {
+	case bool:
+		return v
+	case float64:
+		return v != 0
+	case string:
+		return v != ""
+	default:
+		return value != nil
+	}
 }
