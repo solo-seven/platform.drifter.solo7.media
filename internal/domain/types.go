@@ -280,3 +280,241 @@ type StateUpdateMessage struct {
 	Changes   []StateChange `json:"changes"`
 	Timestamp time.Time     `json:"timestamp"`
 }
+
+// Game Mechanics Types (Phase 2.1: Core Mechanics Repository)
+
+type MechanicId = string
+type ActionTypeId = string
+type OutcomeId = string
+type ResolutionId = string
+
+// GameMechanic represents a core game mechanic
+type GameMechanic struct {
+	ID          MechanicId             `json:"id"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Type        MechanicType           `json:"type"`
+	Properties  map[string]interface{} `json:"properties"`
+	Validation  MechanicValidation     `json:"validation"`
+	Version     int                    `json:"version"`
+}
+
+type MechanicType string
+
+const (
+	MechanicTypeCombat      MechanicType = "combat"
+	MechanicTypeMovement    MechanicType = "movement"
+	MechanicTypeInteraction MechanicType = "interaction"
+	MechanicTypeSkill       MechanicType = "skill"
+	MechanicTypeMagic       MechanicType = "magic"
+	MechanicTypeSocial      MechanicType = "social"
+)
+
+type MechanicValidation struct {
+	RequiredInputs    []InputRequirement `json:"required_inputs"`
+	OutputValidation  OutputValidation   `json:"output_validation"`
+	ContextValidation ContextValidation  `json:"context_validation"`
+}
+
+type InputRequirement struct {
+	Name        string       `json:"name"`
+	Type        string       `json:"type"`
+	Required    bool         `json:"required"`
+	Default     interface{}  `json:"default,omitempty"`
+	Constraints []Constraint `json:"constraints,omitempty"`
+}
+
+type Constraint struct {
+	Type  string      `json:"type"`
+	Value interface{} `json:"value"`
+}
+
+type OutputValidation struct {
+	ExpectedTypes  []string `json:"expected_types"`
+	RequiredFields []string `json:"required_fields"`
+}
+
+type ContextValidation struct {
+	RequiredEntities []string `json:"required_entities"`
+	RequiredState    []string `json:"required_state"`
+}
+
+// ActionDefinition represents a game action
+type ActionDefinition struct {
+	ID            ActionTypeId           `json:"id"`
+	Name          string                 `json:"name"`
+	Description   string                 `json:"description"`
+	Type          ActionType             `json:"type"`
+	Cost          ActionCost             `json:"cost"`
+	Prerequisites []Prerequisite         `json:"prerequisites"`
+	Resolution    ResolutionMethod       `json:"resolution"`
+	Properties    map[string]interface{} `json:"properties"`
+	Validation    ActionValidation       `json:"validation"`
+}
+
+// Action type constants
+const (
+	ActionTypeAttack   ActionType = "attack"
+	ActionTypeMove     ActionType = "move"
+	ActionTypeCast     ActionType = "cast"
+	ActionTypeInteract ActionType = "interact"
+	ActionTypeSkill    ActionType = "skill"
+	ActionTypeSocial   ActionType = "social"
+	ActionTypeDefend   ActionType = "defend"
+	ActionTypeUse      ActionType = "use"
+)
+
+type ActionCost struct {
+	ActionPoints   int                    `json:"action_points"`
+	MovementPoints int                    `json:"movement_points"`
+	Resources      map[string]interface{} `json:"resources"`
+	Cooldown       time.Duration          `json:"cooldown"`
+	Uses           *UsesLimit             `json:"uses,omitempty"`
+}
+
+type UsesLimit struct {
+	Per     string `json:"per"` // "turn", "encounter", "short_rest", "long_rest", "day"
+	Count   int    `json:"count"`
+	Current int    `json:"current"`
+}
+
+type Prerequisite struct {
+	Type       string                 `json:"type"`
+	Condition  string                 `json:"condition"`
+	Properties map[string]interface{} `json:"properties"`
+}
+
+type ActionValidation struct {
+	RequiredComponents []ComponentType `json:"required_components"`
+	RequiredStats      []string        `json:"required_stats"`
+	ContextChecks      []ContextCheck  `json:"context_checks"`
+}
+
+type ContextCheck struct {
+	Type       string                 `json:"type"`
+	Expression string                 `json:"expression"`
+	Properties map[string]interface{} `json:"properties"`
+}
+
+// ResolutionMethod defines how an action is resolved
+type ResolutionMethod struct {
+	ID                ResolutionId           `json:"id"`
+	Name              string                 `json:"name"`
+	ApplicableActions []ActionTypeId         `json:"applicable_actions"`
+	RequiredInputs    []InputRequirement     `json:"required_inputs"`
+	CalculationSteps  []CalculationStep      `json:"calculation_steps"`
+	PossibleOutcomes  []OutcomeRange         `json:"possible_outcomes"`
+	Properties        map[string]interface{} `json:"properties"`
+}
+
+type CalculationStep struct {
+	Step        int                    `json:"step"`
+	Type        string                 `json:"type"`
+	Expression  string                 `json:"expression"`
+	Description string                 `json:"description"`
+	Properties  map[string]interface{} `json:"properties"`
+}
+
+type OutcomeRange struct {
+	Type        string                 `json:"type"`
+	MinValue    interface{}            `json:"min_value"`
+	MaxValue    interface{}            `json:"max_value"`
+	Description string                 `json:"description"`
+	Properties  map[string]interface{} `json:"properties"`
+}
+
+// OutcomeFormula defines how outcomes are calculated
+type OutcomeFormula struct {
+	ID          OutcomeId              `json:"id"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Formula     string                 `json:"formula"`
+	Variables   []FormulaVariable      `json:"variables"`
+	Validation  FormulaValidation      `json:"validation"`
+	Properties  map[string]interface{} `json:"properties"`
+}
+
+type FormulaVariable struct {
+	Name        string      `json:"name"`
+	Type        string      `json:"type"`
+	Source      string      `json:"source"`
+	Default     interface{} `json:"default,omitempty"`
+	Description string      `json:"description"`
+}
+
+type FormulaValidation struct {
+	RequiredVariables []string     `json:"required_variables"`
+	ExpectedOutput    string       `json:"expected_output"`
+	RangeChecks       []RangeCheck `json:"range_checks"`
+}
+
+type RangeCheck struct {
+	Variable string      `json:"variable"`
+	Min      interface{} `json:"min,omitempty"`
+	Max      interface{} `json:"max,omitempty"`
+}
+
+// ModifierSystem defines how modifiers are applied
+type ModifierSystem struct {
+	ID          string                 `json:"id"`
+	Name        string                 `json:"name"`
+	Type        ModifierType           `json:"type"`
+	Source      ModifierSource         `json:"source"`
+	Application ModifierApplication    `json:"application"`
+	Properties  map[string]interface{} `json:"properties"`
+}
+
+type ModifierType string
+
+const (
+	ModifierTypeAttribute     ModifierType = "attribute"
+	ModifierTypeEquipment     ModifierType = "equipment"
+	ModifierTypeEnvironmental ModifierType = "environmental"
+	ModifierTypeTemporary     ModifierType = "temporary"
+	ModifierTypeSkill         ModifierType = "skill"
+	ModifierTypeMagic         ModifierType = "magic"
+)
+
+type ModifierSource struct {
+	Type       string                 `json:"type"`
+	EntityID   *EntityId              `json:"entity_id,omitempty"`
+	Component  *ComponentType         `json:"component,omitempty"`
+	Property   string                 `json:"property"`
+	Properties map[string]interface{} `json:"properties"`
+}
+
+type ModifierApplication struct {
+	Target     string                 `json:"target"`
+	Operation  string                 `json:"operation"` // "add", "multiply", "set", "conditional"
+	Expression string                 `json:"expression"`
+	Conditions []string               `json:"conditions"`
+	Properties map[string]interface{} `json:"properties"`
+}
+
+// RandomizationRule defines dice rolling and random mechanics
+type RandomizationRule struct {
+	ID         string                 `json:"id"`
+	Name       string                 `json:"name"`
+	Type       RandomizationType      `json:"type"`
+	Notation   string                 `json:"notation"`
+	Expression string                 `json:"expression"`
+	Properties map[string]interface{} `json:"properties"`
+}
+
+type RandomizationType string
+
+const (
+	RandomizationTypeDice     RandomizationType = "dice"
+	RandomizationTypeTable    RandomizationType = "table"
+	RandomizationTypeWeighted RandomizationType = "weighted"
+	RandomizationTypeCustom   RandomizationType = "custom"
+)
+
+// DeterministicRule provides fallback for randomization
+type DeterministicRule struct {
+	ID         string                 `json:"id"`
+	Name       string                 `json:"name"`
+	Condition  string                 `json:"condition"`
+	Fallback   string                 `json:"fallback"`
+	Properties map[string]interface{} `json:"properties"`
+}

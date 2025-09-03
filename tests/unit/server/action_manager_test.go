@@ -1,0 +1,471 @@
+package server_test
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo7.media/platform.drifter.solo7.media/internal/server"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+)
+
+// MockLogger is a mock implementation of the Logger interface
+type MockLogger struct {
+	mock.Mock
+}
+
+func (m *MockLogger) Debug(msg string, fields map[string]interface{}) {
+	m.Called(msg, fields)
+}
+
+func (m *MockLogger) Info(msg string, fields map[string]interface{}) {
+	m.Called(msg, fields)
+}
+
+func (m *MockLogger) Warn(msg string, fields map[string]interface{}) {
+	m.Called(msg, fields)
+}
+
+func (m *MockLogger) Error(msg string, fields map[string]interface{}) {
+	m.Called(msg, fields)
+}
+
+func (m *MockLogger) Fatal(msg string, fields map[string]interface{}) {
+	m.Called(msg, fields)
+}
+
+func TestActionManager_RegisterAction(t *testing.T) {
+	mockLogger := &MockLogger{}
+	manager := server.NewActionManager(mockLogger)
+	ctx := context.Background()
+
+	t.Run("successful registration", func(t *testing.T) {
+		action := &domain.ActionDefinition{
+			ID:          "action.basic_attack",
+			Name:        "Basic Attack",
+			Description: "A basic melee attack action",
+			Type:        domain.ActionTypeAttack,
+			Cost: domain.ActionCost{
+				ActionPoints:   1,
+				MovementPoints: 0,
+				Resources:      map[string]interface{}{},
+				Cooldown:       time.Second * 2,
+			},
+			Prerequisites: []domain.Prerequisite{
+				{
+					Type:      "weapon_equipped",
+					Condition: "has_weapon",
+					Properties: map[string]interface{}{
+						"weapon_type": "melee",
+					},
+				},
+			},
+			Resolution: domain.ResolutionMethod{
+				ID:                "resolution.attack_roll",
+				Name:              "Attack Roll Resolution",
+				ApplicableActions: []domain.ActionTypeId{"action.basic_attack"},
+				RequiredInputs: []domain.InputRequirement{
+					{
+						Name:     "attacker",
+						Type:     "entity",
+						Required: true,
+					},
+					{
+						Name:     "target",
+						Type:     "entity",
+						Required: true,
+					},
+				},
+				CalculationSteps: []domain.CalculationStep{
+					{
+						Step:        1,
+						Type:        "dice_roll",
+						Expression:  "roll(\"1d20\") + self.attack_bonus",
+						Description: "Roll attack dice",
+					},
+					{
+						Step:        2,
+						Type:        "comparison",
+						Expression:  "attack_roll >= target.armor_class",
+						Description: "Check if attack hits",
+					},
+				},
+				PossibleOutcomes: []domain.OutcomeRange{
+					{
+						Type:        "hit",
+						MinValue:    1,
+						MaxValue:    20,
+						Description: "Attack hits target",
+					},
+					{
+						Type:        "miss",
+						MinValue:    0,
+						MaxValue:    0,
+						Description: "Attack misses target",
+					},
+				},
+			},
+			Properties: map[string]interface{}{
+				"range": "melee",
+			},
+			Validation: domain.ActionValidation{
+				RequiredComponents: []domain.ComponentType{"gameplay"},
+				RequiredStats:      []string{"strength", "attack_bonus"},
+				ContextChecks: []domain.ContextCheck{
+					{
+						Type:       "range_check",
+						Expression: "distance(self, target) <= 5",
+						Properties: map[string]interface{}{
+							"max_range": 5,
+						},
+					},
+				},
+			},
+		}
+
+		mockLogger.On("Info", "Action registered", mock.AnythingOfType("map[string]interface {}")).Return()
+
+		err := manager.RegisterAction(ctx, action)
+		assert.NoError(t, err)
+
+		// Verify the action was registered
+		retrieved, err := manager.GetAction(ctx, "action.basic_attack")
+		assert.NoError(t, err)
+		assert.Equal(t, action.ID, retrieved.ID)
+		assert.Equal(t, action.Name, retrieved.Name)
+		assert.Equal(t, action.Type, retrieved.Type)
+		assert.Equal(t, action.Cost.ActionPoints, retrieved.Cost.ActionPoints)
+
+		mockLogger.AssertExpectations(t)
+	})
+
+	t.Run("duplicate registration", func(t *testing.T) {
+		action := &domain.ActionDefinition{
+			ID:         "action.basic_attack",
+			Name:       "Basic Attack",
+			Type:       domain.ActionTypeAttack,
+			Resolution: domain.ResolutionMethod{ID: "test.resolution"},
+		}
+
+		err := manager.RegisterAction(ctx, action)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "already exists")
+	})
+
+	t.Run("invalid action - empty ID", func(t *testing.T) {
+		action := &domain.ActionDefinition{
+			ID:   "",
+			Name: "Test Action",
+			Type: domain.ActionTypeAttack,
+		}
+
+		err := manager.RegisterAction(ctx, action)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "ID cannot be empty")
+	})
+
+	t.Run("invalid action - empty name", func(t *testing.T) {
+		action := &domain.ActionDefinition{
+			ID:   "test.action",
+			Name: "",
+			Type: domain.ActionTypeAttack,
+		}
+
+		err := manager.RegisterAction(ctx, action)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "name cannot be empty")
+	})
+
+	t.Run("invalid action - invalid type", func(t *testing.T) {
+		action := &domain.ActionDefinition{
+			ID:   "test.action",
+			Name: "Test Action",
+			Type: "invalid_type",
+		}
+
+		err := manager.RegisterAction(ctx, action)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid action type")
+	})
+
+	t.Run("invalid action - negative action points", func(t *testing.T) {
+		action := &domain.ActionDefinition{
+			ID:   "test.action",
+			Name: "Test Action",
+			Type: domain.ActionTypeAttack,
+			Cost: domain.ActionCost{
+				ActionPoints: -1, // Invalid negative value
+			},
+			Resolution: domain.ResolutionMethod{ID: "test.resolution"},
+		}
+
+		err := manager.RegisterAction(ctx, action)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "action points cost cannot be negative")
+	})
+
+	t.Run("invalid action - negative movement points", func(t *testing.T) {
+		action := &domain.ActionDefinition{
+			ID:   "test.action",
+			Name: "Test Action",
+			Type: domain.ActionTypeAttack,
+			Cost: domain.ActionCost{
+				ActionPoints:   1,
+				MovementPoints: -1, // Invalid negative value
+			},
+			Resolution: domain.ResolutionMethod{ID: "test.resolution"},
+		}
+
+		err := manager.RegisterAction(ctx, action)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "movement points cost cannot be negative")
+	})
+
+	t.Run("invalid action - empty resolution ID", func(t *testing.T) {
+		action := &domain.ActionDefinition{
+			ID:   "test.action",
+			Name: "Test Action",
+			Type: domain.ActionTypeAttack,
+			Cost: domain.ActionCost{
+				ActionPoints: 1,
+			},
+			Resolution: domain.ResolutionMethod{ID: ""}, // Empty resolution ID
+		}
+
+		err := manager.RegisterAction(ctx, action)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "resolution method ID is required")
+	})
+
+	t.Run("invalid action - empty prerequisite type", func(t *testing.T) {
+		action := &domain.ActionDefinition{
+			ID:   "test.action",
+			Name: "Test Action",
+			Type: domain.ActionTypeAttack,
+			Cost: domain.ActionCost{
+				ActionPoints: 1,
+			},
+			Prerequisites: []domain.Prerequisite{
+				{
+					Type:      "", // Empty type
+					Condition: "test_condition",
+				},
+			},
+			Resolution: domain.ResolutionMethod{ID: "test.resolution"},
+		}
+
+		err := manager.RegisterAction(ctx, action)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "prerequisite 0 type cannot be empty")
+	})
+
+	t.Run("invalid action - empty context check expression", func(t *testing.T) {
+		action := &domain.ActionDefinition{
+			ID:   "test.action",
+			Name: "Test Action",
+			Type: domain.ActionTypeAttack,
+			Cost: domain.ActionCost{
+				ActionPoints: 1,
+			},
+			Resolution: domain.ResolutionMethod{ID: "test.resolution"},
+			Validation: domain.ActionValidation{
+				ContextChecks: []domain.ContextCheck{
+					{
+						Type:       "test_check",
+						Expression: "", // Empty expression
+					},
+				},
+			},
+		}
+
+		err := manager.RegisterAction(ctx, action)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "context check 0 expression cannot be empty")
+	})
+}
+
+func TestActionManager_UnregisterAction(t *testing.T) {
+	mockLogger := &MockLogger{}
+	manager := server.NewActionManager(mockLogger)
+	ctx := context.Background()
+
+	// Register an action first
+	action := &domain.ActionDefinition{
+		ID:         "test.action",
+		Name:       "Test Action",
+		Type:       domain.ActionTypeAttack,
+		Resolution: domain.ResolutionMethod{ID: "test.resolution"},
+	}
+
+	mockLogger.On("Info", "Action registered", mock.AnythingOfType("map[string]interface {}")).Return()
+	err := manager.RegisterAction(ctx, action)
+	assert.NoError(t, err)
+
+	t.Run("successful unregistration", func(t *testing.T) {
+		mockLogger.On("Info", "Action unregistered", mock.AnythingOfType("map[string]interface {}")).Return()
+
+		err := manager.UnregisterAction(ctx, "test.action")
+		assert.NoError(t, err)
+
+		// Verify the action was removed
+		_, err = manager.GetAction(ctx, "test.action")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+
+		mockLogger.AssertExpectations(t)
+	})
+
+	t.Run("unregister non-existent action", func(t *testing.T) {
+		err := manager.UnregisterAction(ctx, "non.existent")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
+}
+
+func TestActionManager_GetActionsByType(t *testing.T) {
+	mockLogger := &MockLogger{}
+	manager := server.NewActionManager(mockLogger)
+	ctx := context.Background()
+
+	// Register multiple actions of different types
+	attackAction := &domain.ActionDefinition{
+		ID:         "action.attack",
+		Name:       "Attack",
+		Type:       domain.ActionTypeAttack,
+		Resolution: domain.ResolutionMethod{ID: "test.resolution"},
+	}
+
+	moveAction := &domain.ActionDefinition{
+		ID:         "action.move",
+		Name:       "Move",
+		Type:       domain.ActionTypeMove,
+		Resolution: domain.ResolutionMethod{ID: "test.resolution"},
+	}
+
+	anotherAttackAction := &domain.ActionDefinition{
+		ID:         "action.charge",
+		Name:       "Charge",
+		Type:       domain.ActionTypeAttack,
+		Resolution: domain.ResolutionMethod{ID: "test.resolution"},
+	}
+
+	mockLogger.On("Info", mock.AnythingOfType("string"), mock.AnythingOfType("map[string]interface {}")).Return()
+
+	err := manager.RegisterAction(ctx, attackAction)
+	assert.NoError(t, err)
+
+	err = manager.RegisterAction(ctx, moveAction)
+	assert.NoError(t, err)
+
+	err = manager.RegisterAction(ctx, anotherAttackAction)
+	assert.NoError(t, err)
+
+	t.Run("get attack actions", func(t *testing.T) {
+		actions, err := manager.GetActionsByType(ctx, domain.ActionTypeAttack)
+		assert.NoError(t, err)
+		assert.Len(t, actions, 2)
+
+		// Verify we got the right actions
+		actionIDs := make([]string, len(actions))
+		for i, a := range actions {
+			actionIDs[i] = a.ID
+		}
+		assert.Contains(t, actionIDs, "action.attack")
+		assert.Contains(t, actionIDs, "action.charge")
+	})
+
+	t.Run("get move actions", func(t *testing.T) {
+		actions, err := manager.GetActionsByType(ctx, domain.ActionTypeMove)
+		assert.NoError(t, err)
+		assert.Len(t, actions, 1)
+		assert.Equal(t, "action.move", actions[0].ID)
+	})
+
+	t.Run("get non-existent type", func(t *testing.T) {
+		actions, err := manager.GetActionsByType(ctx, domain.ActionTypeCast)
+		assert.NoError(t, err)
+		assert.Len(t, actions, 0)
+	})
+}
+
+func TestActionManager_ListActions(t *testing.T) {
+	mockLogger := &MockLogger{}
+	manager := server.NewActionManager(mockLogger)
+	ctx := context.Background()
+
+	// Register multiple actions
+	action1 := &domain.ActionDefinition{
+		ID:         "test.action1",
+		Name:       "Test Action 1",
+		Type:       domain.ActionTypeAttack,
+		Resolution: domain.ResolutionMethod{ID: "test.resolution"},
+	}
+
+	action2 := &domain.ActionDefinition{
+		ID:         "test.action2",
+		Name:       "Test Action 2",
+		Type:       domain.ActionTypeMove,
+		Resolution: domain.ResolutionMethod{ID: "test.resolution"},
+	}
+
+	mockLogger.On("Info", mock.AnythingOfType("string"), mock.AnythingOfType("map[string]interface {}")).Return()
+
+	err := manager.RegisterAction(ctx, action1)
+	assert.NoError(t, err)
+
+	err = manager.RegisterAction(ctx, action2)
+	assert.NoError(t, err)
+
+	actions, err := manager.ListActions(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, actions, 2)
+
+	// Verify we got both actions
+	actionIDs := make([]string, len(actions))
+	for i, a := range actions {
+		actionIDs[i] = a.ID
+	}
+	assert.Contains(t, actionIDs, "test.action1")
+	assert.Contains(t, actionIDs, "test.action2")
+}
+
+func TestActionManager_ValidateAction(t *testing.T) {
+	mockLogger := &MockLogger{}
+	manager := server.NewActionManager(mockLogger)
+	ctx := context.Background()
+
+	t.Run("valid action", func(t *testing.T) {
+		action := &domain.ActionDefinition{
+			ID:         "test.action",
+			Name:       "Test Action",
+			Type:       domain.ActionTypeAttack,
+			Cost:       domain.ActionCost{ActionPoints: 1},
+			Resolution: domain.ResolutionMethod{ID: "test.resolution"},
+			Prerequisites: []domain.Prerequisite{
+				{
+					Type:      "test_type",
+					Condition: "test_condition",
+				},
+			},
+			Validation: domain.ActionValidation{
+				ContextChecks: []domain.ContextCheck{
+					{
+						Type:       "test_check",
+						Expression: "test_expression",
+					},
+				},
+			},
+		}
+
+		err := manager.ValidateAction(ctx, action)
+		assert.NoError(t, err)
+	})
+
+	t.Run("invalid action - nil", func(t *testing.T) {
+		err := manager.ValidateAction(ctx, nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot be nil")
+	})
+}

@@ -1,4 +1,4 @@
-package server
+package server_test
 
 import (
 	"context"
@@ -8,15 +8,6 @@ import (
 	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
 	"github.com/solo7.media/platform.drifter.solo7.media/internal/server"
 )
-
-// MockLogger implements the Logger interface for testing
-type MockLogger struct{}
-
-func (m *MockLogger) Debug(msg string, fields map[string]interface{}) {}
-func (m *MockLogger) Info(msg string, fields map[string]interface{})  {}
-func (m *MockLogger) Warn(msg string, fields map[string]interface{})  {}
-func (m *MockLogger) Error(msg string, fields map[string]interface{}) {}
-func (m *MockLogger) Fatal(msg string, fields map[string]interface{}) {}
 
 func TestRulesEngine_RegisterAndUnregisterRule(t *testing.T) {
 	logger := &MockLogger{}

@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/solo7.media/platform.drifter.solo7.media/generated/proto/proto"
+	"github.com/solo7.media/platform.drifter.solo7.media/generated/proto"
 	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
 	protobuf "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"

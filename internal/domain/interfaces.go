@@ -171,3 +171,74 @@ type Configuration interface {
 	GetDatabaseURL() string
 	GetRedisURL() string
 }
+
+// GameMechanicManager handles game mechanics registration and management
+type GameMechanicManager interface {
+	RegisterMechanic(ctx context.Context, mechanic *GameMechanic) error
+	UnregisterMechanic(ctx context.Context, mechanicID MechanicId) error
+	GetMechanic(ctx context.Context, mechanicID MechanicId) (*GameMechanic, error)
+	GetMechanicsByType(ctx context.Context, mechanicType MechanicType) ([]*GameMechanic, error)
+	ValidateMechanic(ctx context.Context, mechanic *GameMechanic) error
+	ListMechanics(ctx context.Context) ([]*GameMechanic, error)
+}
+
+// ActionDefinitionManager handles action definitions
+type ActionDefinitionManager interface {
+	RegisterAction(ctx context.Context, action *ActionDefinition) error
+	UnregisterAction(ctx context.Context, actionID ActionTypeId) error
+	GetAction(ctx context.Context, actionID ActionTypeId) (*ActionDefinition, error)
+	GetActionsByType(ctx context.Context, actionType ActionType) ([]*ActionDefinition, error)
+	ValidateAction(ctx context.Context, action *ActionDefinition) error
+	ListActions(ctx context.Context) ([]*ActionDefinition, error)
+}
+
+// ResolutionManager handles action resolution methods
+type ResolutionManager interface {
+	RegisterResolutionMethod(ctx context.Context, method *ResolutionMethod) error
+	UnregisterResolutionMethod(ctx context.Context, resolutionID ResolutionId) error
+	GetResolutionMethod(ctx context.Context, resolutionID ResolutionId) (*ResolutionMethod, error)
+	GetResolutionMethodsForAction(ctx context.Context, actionID ActionTypeId) ([]*ResolutionMethod, error)
+	ValidateResolutionMethod(ctx context.Context, method *ResolutionMethod) error
+	ListResolutionMethods(ctx context.Context) ([]*ResolutionMethod, error)
+}
+
+// ModifierManager handles modifier systems
+type ModifierManager interface {
+	RegisterModifier(ctx context.Context, modifier *ModifierSystem) error
+	UnregisterModifier(ctx context.Context, modifierID string) error
+	GetModifier(ctx context.Context, modifierID string) (*ModifierSystem, error)
+	GetModifiersByType(ctx context.Context, modifierType ModifierType) ([]*ModifierSystem, error)
+	ApplyModifiers(ctx context.Context, entityID EntityId, target string, context map[string]interface{}) ([]ModifierResult, error)
+	ValidateModifier(ctx context.Context, modifier *ModifierSystem) error
+	ListModifiers(ctx context.Context) ([]*ModifierSystem, error)
+}
+
+// ModifierResult represents the result of applying a modifier
+type ModifierResult struct {
+	ModifierID string      `json:"modifier_id"`
+	Value      interface{} `json:"value"`
+	Operation  string      `json:"operation"`
+	Success    bool        `json:"success"`
+	Error      string      `json:"error,omitempty"`
+}
+
+// RandomizationManager handles randomization rules
+type RandomizationManager interface {
+	RegisterRandomizationRule(ctx context.Context, rule *RandomizationRule) error
+	UnregisterRandomizationRule(ctx context.Context, ruleID string) error
+	GetRandomizationRule(ctx context.Context, ruleID string) (*RandomizationRule, error)
+	GetRandomizationRulesByType(ctx context.Context, ruleType RandomizationType) ([]*RandomizationRule, error)
+	ExecuteRandomization(ctx context.Context, ruleID string, context map[string]interface{}) (*RandomizationResult, error)
+	ValidateRandomizationRule(ctx context.Context, rule *RandomizationRule) error
+	ListRandomizationRules(ctx context.Context) ([]*RandomizationRule, error)
+}
+
+// RandomizationResult represents the result of a randomization
+type RandomizationResult struct {
+	RuleID   string                 `json:"rule_id"`
+	Value    interface{}            `json:"value"`
+	Details  string                 `json:"details"`
+	Success  bool                   `json:"success"`
+	Error    string                 `json:"error,omitempty"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
