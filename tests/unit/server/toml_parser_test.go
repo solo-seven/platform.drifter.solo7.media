@@ -9,31 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockLogger is a mock implementation of the Logger interface
-type MockLogger struct {
-	mock.Mock
-}
-
-func (m *MockLogger) Debug(msg string, fields map[string]interface{}) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Info(msg string, fields map[string]interface{}) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Warn(msg string, fields map[string]interface{}) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Error(msg string, fields map[string]interface{}) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Fatal(msg string, fields map[string]interface{}) {
-	m.Called(msg, fields)
-}
-
 func TestTOMLParser_ParseTOML(t *testing.T) {
 	mockLogger := &MockLogger{}
 	parser := server.NewTOMLParser(mockLogger)
@@ -133,7 +108,7 @@ hit_die = "d10"
 		options := domain.TOMLParseOptions{
 			ValidateSchema:    false,
 			ResolveReferences: false,
-			AllowedTypes:      []domain.ContentType{domain.ContentTypeRace},
+			AllowedTypes:      []domain.ContentType{domain.ContentTypeSpecies},
 		}
 
 		result, err := parser.ParseTOML(tomlData, options)

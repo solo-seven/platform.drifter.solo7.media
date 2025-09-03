@@ -185,8 +185,8 @@ func (sv *SchemaValidatorImpl) contentTypeFromPath(schemaPath string) domain.Con
 	switch filename {
 	case "class":
 		return domain.ContentTypeClass
-	case "race":
-		return domain.ContentTypeRace
+	case "species":
+		return domain.ContentTypeSpecies
 	case "item":
 		return domain.ContentTypeItem
 	case "spell":

@@ -10,7 +10,7 @@ examples/shattered-realms/
 │   ├── core_mechanics.toml
 │   └── action_resolution.toml
 ├── pg/                     # Player's Guide
-│   ├── races.toml
+│   ├── species.toml
 │   ├── classes.toml
 │   ├── skills.toml
 │   └── equipment.toml

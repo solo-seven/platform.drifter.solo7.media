@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+
+
 func TestActionManager_RegisterAction(t *testing.T) {
 	mockLogger := &MockLogger{}
 	manager := server.NewActionManager(mockLogger)

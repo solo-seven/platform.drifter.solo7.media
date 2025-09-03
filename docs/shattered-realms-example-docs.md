@@ -89,22 +89,22 @@ rule = '''
 ### Character Creation System
 
 ```toml
-# pg/races.toml
+# pg/species.toml
 
-[races.void_touched]
-id = "race.void_touched"
+[species.void_touched]
+id = "species.void_touched"
 name = "Void-Touched"
 description = "Humans altered by exposure to reality fractures"
 size = "medium"
 speed = 30
 lifespan = "80-120 years"
 
-[races.void_touched.attributes]
+[species.void_touched.attributes]
 charisma = 2
 constitution = 1
 chaos_affinity = 3  # Custom attribute
 
-[races.void_touched.abilities]
+[species.void_touched.abilities]
 void_sight = {
   id = "ability.void_sight",
   description = "Can see reality instabilities",
@@ -117,7 +117,7 @@ stability_drain = {
   effect = 'target_location.reality_stability -= roll("1d6"); heal(self, roll("1d4"))'
 }
 
-[races.void_touched.resistances]
+[species.void_touched.resistances]
 chaos = "advantage"
 psychic = "resistance"
 ```
@@ -657,7 +657,7 @@ A more... adventurous district, the @Location/flux_bazaar caters to those who tr
 
 ## Notable Inhabitants
 
-The @Class/reality_warden patrol the city's borders, their @Ability/anchor_point abilities creating stable zones for travelers. Meanwhile, @Race/void_touched refugees from the outer fractures bring tales of the impossible.
+The @Class/reality_warden patrol the city's borders, their @Ability/anchor_point abilities creating stable zones for travelers. Meanwhile, @Species/void_touched refugees from the outer fractures bring tales of the impossible.
 
 ```encounter
 type: stability_breach

@@ -26,7 +26,7 @@ A more... adventurous district, the @Location/flux_bazaar caters to those who tr
 
 ## Notable Inhabitants
 
-The @Class/reality_warden patrol the city's borders, their @Ability/anchor_point abilities creating stable zones for travelers. Meanwhile, @Race/void_touched refugees from the outer fractures bring tales of the impossible.
+The @Class/reality_warden patrol the city's borders, their @Ability/anchor_point abilities creating stable zones for travelers. Meanwhile, @Species/void_touched refugees from the outer fractures bring tales of the impossible.
 
 ```encounter
 type: stability_breach

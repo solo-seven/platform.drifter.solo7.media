@@ -260,8 +260,8 @@ func (tp *TOMLParserImpl) extractContentType(data map[string]interface{}) (domai
 				switch parts[0] {
 				case "class":
 					return domain.ContentTypeClass, nil
-				case "race":
-					return domain.ContentTypeRace, nil
+				case "species":
+					return domain.ContentTypeSpecies, nil
 				case "item":
 					return domain.ContentTypeItem, nil
 				case "spell":

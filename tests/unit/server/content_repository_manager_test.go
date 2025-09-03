@@ -9,31 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockLogger is a mock implementation of the Logger interface
-type MockLogger struct {
-	mock.Mock
-}
-
-func (m *MockLogger) Debug(msg string, fields map[string]interface{}) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Info(msg string, fields map[string]interface{}) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Warn(msg string, fields map[string]interface{}) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Error(msg string, fields map[string]interface{}) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Fatal(msg string, fields map[string]interface{}) {
-	m.Called(msg, fields)
-}
-
 func TestContentRepositoryManager_AddContent(t *testing.T) {
 	mockLogger := &MockLogger{}
 	manager := server.NewContentRepositoryManager(mockLogger)
@@ -173,8 +148,8 @@ func TestContentRepositoryManager_GetContentByType(t *testing.T) {
 		}
 
 		content3 := &domain.TOMLContent{
-			ID:   "race.human",
-			Type: domain.ContentTypeRace,
+			ID:   "species.human",
+			Type: domain.ContentTypeSpecies,
 			Data: map[string]interface{}{
 				"name": "Human",
 			},
@@ -195,9 +170,9 @@ func TestContentRepositoryManager_GetContentByType(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, classes, 2)
 
-		races, err := manager.GetContentByType(domain.ContentTypeRace)
+		species, err := manager.GetContentByType(domain.ContentTypeSpecies)
 		assert.NoError(t, err)
-		assert.Len(t, races, 1)
+		assert.Len(t, species, 1)
 
 		mockLogger.AssertExpectations(t)
 	})
@@ -359,8 +334,8 @@ func TestContentRepositoryManager_ListContent(t *testing.T) {
 		}
 
 		content2 := &domain.TOMLContent{
-			ID:   "race.human",
-			Type: domain.ContentTypeRace,
+			ID:   "species.human",
+			Type: domain.ContentTypeSpecies,
 			Data: map[string]interface{}{
 				"name": "Human",
 			},

@@ -109,15 +109,15 @@ interface PlayersGuide {
 }
 
 interface CharacterCreationSystem {
-  playableRaces: Map<RaceId, RaceDefinition>;
+  playableSpecies: Map<SpeciesId, SpeciesDefinition>;
   characterClasses: Map<ClassId, ClassDefinition>;
   attributeSystems: AttributeSystem[];
   startingOptions: StartingOptionSet[];
   customizationRules: CustomizationRule[];
 }
 
-interface RaceDefinition {
-  id: RaceId;
+interface SpeciesDefinition {
+  id: SpeciesId;
   name: string;
   description: string;
   baseAttributes: AttributeModifier[];

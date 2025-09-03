@@ -526,7 +526,7 @@ type ContentType string
 
 const (
 	ContentTypeClass         ContentType = "class"
-	ContentTypeRace          ContentType = "race"
+	ContentTypeSpecies       ContentType = "species"
 	ContentTypeItem          ContentType = "item"
 	ContentTypeSpell         ContentType = "spell"
 	ContentTypeAbility       ContentType = "ability"

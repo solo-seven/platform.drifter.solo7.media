@@ -86,7 +86,7 @@
 
 ### Character Creation & Management
 **Epic: Player Character Lifecycle**
-- As a player, I want to create characters using available races and classes so that I can build the character I envision
+- As a player, I want to create characters using available species and classes so that I can build the character I envision
 - As a player, I want to customize my character's appearance and background so that they feel unique and personal
 - As a player, I want to level up and advance my character so that I see meaningful progression over time
 - As a player, I want to manage my character's equipment and inventory so that I can optimize for different situations

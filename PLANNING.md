@@ -71,8 +71,8 @@ The platform implements a three-layer DSL architecture:
 **Priority: High | Estimated Duration: 6-8 weeks**
 
 #### 3.1 Character Creation System
-- [ ] **Race Definition System**
-  - Race attribute modifiers
+- [ ] **Species Definition System**
+  - Species attribute modifiers
   - Racial abilities and restrictions
   - Cultural variant support
 - [ ] **Class Definition System**
