@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://solo7.platform/schemas/entity.schema.json",
+  "title": "Entity",
+  "type": "object",
+  "required": ["id", "components", "metadata"],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "metadata": {
+      "type": "object",
+      "required": ["created_at", "updated_at", "version"],
+      "properties": {
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" },
+        "version": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "components": {
+      "type": "object",
+      "description": "Map of component type -> component",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/definitions/Component" }
+    }
+  },
+  "definitions": {
+    "Vector3": {
+      "type": "object",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "Bounds": {
+      "type": "object",
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "$ref": "#/definitions/Vector3" },
+        "max": { "$ref": "#/definitions/Vector3" }
+      },
+      "additionalProperties": false
+    },
+    "Component": {
+      "type": "object",
+      "required": ["type", "data", "version"],
+      "properties": {
+        "type": { "type": "string", "enum": ["transform", "physics", "gameplay", "renderable", "interactive", "network"] },
+        "version": { "type": "integer", "minimum": 0 },
+        "data": {
+          "oneOf": [
+            { "$ref": "#/definitions/TransformComponent" },
+            { "$ref": "#/definitions/PhysicsComponent" },
+            { "$ref": "#/definitions/GameplayComponent" },
+            { "$ref": "#/definitions/RenderableComponent" },
+            { "$ref": "#/definitions/InteractiveComponent" },
+            { "$ref": "#/definitions/NetworkComponent" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "TransformComponent": {
+      "type": "object",
+      "required": ["position", "rotation", "scale"],
+      "properties": {
+        "position": { "$ref": "#/definitions/Vector3" },
+        "rotation": { "$ref": "#/definitions/Vector3" },
+        "scale": { "$ref": "#/definitions/Vector3" }
+      },
+      "additionalProperties": false
+    },
+    "PhysicsComponent": {
+      "type": "object",
+      "required": ["collision_bounds", "mass", "velocity", "is_static"],
+      "properties": {
+        "collision_bounds": { "$ref": "#/definitions/Bounds" },
+        "mass": { "type": "number", "minimum": 0 },
+        "velocity": { "$ref": "#/definitions/Vector3" },
+        "is_static": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "RenderableComponent": {
+      "type": "object",
+      "required": ["asset_id", "rendering_hints"],
+      "properties": {
+        "asset_id": { "type": "string", "minLength": 1 },
+        "rendering_hints": {
+          "type": "object",
+          "required": ["lod_levels", "cull_distance", "shadow_casting", "static_batching"],
+          "properties": {
+            "lod_levels": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["level", "distance", "asset_id", "polygon_count"],
+                "properties": {
+                  "level": { "type": "integer", "minimum": 0 },
+                  "distance": { "type": "number", "minimum": 0 },
+                  "asset_id": { "type": "string" },
+                  "polygon_count": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              }
+            },
+            "cull_distance": { "type": "number", "minimum": 0 },
+            "shadow_casting": { "type": "boolean" },
+            "static_batching": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "animation_set_id": { "type": ["string", "null"] },
+        "material_overrides": { "type": ["object", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "InteractiveComponent": {
+      "type": "object",
+      "required": ["input_handlers", "interaction_zones", "is_interactable"],
+      "properties": {
+        "input_handlers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "handler_id", "properties"],
+            "properties": {
+              "type": { "type": "string" },
+              "handler_id": { "type": "string" },
+              "properties": { "type": "object" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "interaction_zones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["bounds", "interaction", "properties"],
+            "properties": {
+              "bounds": { "$ref": "#/definitions/Bounds" },
+              "interaction": { "type": "string" },
+              "properties": { "type": "object" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "is_interactable": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "GameplayComponent": {
+      "type": "object",
+      "required": ["stats", "abilities", "inventory", "status_effects"],
+      "properties": {
+        "stats": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "abilities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "description", "cooldown", "properties"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "cooldown": { "type": "string" },
+              "properties": { "type": "object" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "inventory": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": true
+        },
+        "status_effects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "duration", "start_time", "properties"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "duration": { "type": "string" },
+              "start_time": { "type": "string", "format": "date-time" },
+              "properties": { "type": "object" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "NetworkComponent": {
+      "type": "object",
+      "required": ["replication_rules", "interest_area"],
+      "properties": {
+        "replication_rules": {
+          "type": "object",
+          "required": ["replicate_to_all", "replicate_to", "replicate_from"],
+          "properties": {
+            "replicate_to_all": { "type": "boolean" },
+            "replicate_to": {
+              "type": "array",
+              "items": { "type": "string", "format": "uuid" }
+            },
+            "replicate_from": {
+              "type": "array",
+              "items": { "type": "string", "format": "uuid" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "ownership": { "type": ["string", "null"], "format": "uuid" },
+        "interest_area": {
+          "type": "object",
+          "required": ["center", "radius", "priority"],
+          "properties": {
+            "center": { "$ref": "#/definitions/Vector3" },
+            "radius": { "type": "number", "minimum": 0 },
+            "priority": { "type": "integer" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

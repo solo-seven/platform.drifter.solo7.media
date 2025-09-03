@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://solo7.platform/schemas/expression.schema.json","title":"Expression","type":"string","minLength":1}
