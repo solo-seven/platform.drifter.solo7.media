@@ -518,3 +518,93 @@ type DeterministicRule struct {
 	Fallback   string                 `json:"fallback"`
 	Properties map[string]interface{} `json:"properties"`
 }
+
+// TOML Parser Types for Content Authoring (Phase 5.1)
+
+// ContentType represents the type of content being parsed
+type ContentType string
+
+const (
+	ContentTypeClass         ContentType = "class"
+	ContentTypeRace          ContentType = "race"
+	ContentTypeItem          ContentType = "item"
+	ContentTypeSpell         ContentType = "spell"
+	ContentTypeAbility       ContentType = "ability"
+	ContentTypeMonster       ContentType = "monster"
+	ContentTypeEncounter     ContentType = "encounter"
+	ContentTypeLocation      ContentType = "location"
+	ContentTypeMechanic      ContentType = "mechanic"
+	ContentTypeAction        ContentType = "action"
+	ContentTypeResolution    ContentType = "resolution"
+	ContentTypeModifier      ContentType = "modifier"
+	ContentTypeRandomization ContentType = "randomization"
+)
+
+// TOMLContent represents parsed TOML content
+type TOMLContent struct {
+	Type        ContentType            `json:"type"`
+	ID          string                 `json:"id"`
+	Version     string                 `json:"version,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Data        map[string]interface{} `json:"data"`
+	Expressions map[string]string      `json:"expressions,omitempty"`
+	References  []string               `json:"references,omitempty"`
+	Validation  ContentValidation      `json:"validation,omitempty"`
+}
+
+// ContentValidation represents validation results for parsed content
+type ContentValidation struct {
+	IsValid     bool                `json:"is_valid"`
+	Errors      []ValidationError   `json:"errors,omitempty"`
+	Warnings    []ValidationWarning `json:"warnings,omitempty"`
+	SchemaValid bool                `json:"schema_valid"`
+	References  ReferenceValidation `json:"references,omitempty"`
+}
+
+// ValidationError represents a validation error
+type ValidationError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+	Code    string `json:"code"`
+}
+
+// ValidationWarning represents a validation warning
+type ValidationWarning struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+	Code    string `json:"code"`
+}
+
+// ReferenceValidation represents validation of cross-references
+type ReferenceValidation struct {
+	ValidReferences   []string `json:"valid_references"`
+	InvalidReferences []string `json:"invalid_references"`
+	MissingReferences []string `json:"missing_references"`
+}
+
+// TOMLParseResult represents the result of parsing TOML content
+type TOMLParseResult struct {
+	Content  *TOMLContent           `json:"content,omitempty"`
+	Success  bool                   `json:"success"`
+	Error    string                 `json:"error,omitempty"`
+	Warnings []string               `json:"warnings,omitempty"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// TOMLParseOptions represents options for TOML parsing
+type TOMLParseOptions struct {
+	ValidateSchema    bool          `json:"validate_schema"`
+	ResolveReferences bool          `json:"resolve_references"`
+	AllowedTypes      []ContentType `json:"allowed_types,omitempty"`
+	StrictMode        bool          `json:"strict_mode"`
+	SchemaPath        string        `json:"schema_path,omitempty"`
+}
+
+// ContentRepository represents a repository of parsed content
+type ContentRepository struct {
+	Content     map[string]*TOMLContent  `json:"content"`
+	ByType      map[ContentType][]string `json:"by_type"`
+	References  map[string][]string      `json:"references"`
+	LastUpdated time.Time                `json:"last_updated"`
+	Version     string                   `json:"version"`
+}

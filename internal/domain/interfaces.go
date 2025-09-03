@@ -242,3 +242,49 @@ type RandomizationResult struct {
 	Error    string                 `json:"error,omitempty"`
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
+
+// TOML Parser Interfaces for Content Authoring (Phase 5.1)
+
+// TOMLParser defines the interface for parsing TOML content
+type TOMLParser interface {
+	ParseTOML(data []byte, options TOMLParseOptions) (*TOMLParseResult, error)
+	ParseTOMLFile(filePath string, options TOMLParseOptions) (*TOMLParseResult, error)
+	ValidateContent(content *TOMLContent, options TOMLParseOptions) (*ContentValidation, error)
+	ExtractExpressions(content *TOMLContent) (map[string]string, error)
+	ExtractReferences(content *TOMLContent) ([]string, error)
+}
+
+// ContentRepositoryManager defines the interface for managing content repositories
+type ContentRepositoryManager interface {
+	AddContent(content *TOMLContent) error
+	GetContent(id string) (*TOMLContent, error)
+	GetContentByType(contentType ContentType) ([]*TOMLContent, error)
+	RemoveContent(id string) error
+	UpdateContent(content *TOMLContent) error
+	ListContent() ([]*TOMLContent, error)
+	ValidateRepository() (*ContentValidation, error)
+	ResolveReferences(content *TOMLContent) error
+	GetRepository() *ContentRepository
+}
+
+// SchemaValidator defines the interface for validating content against schemas
+type SchemaValidator interface {
+	ValidateAgainstSchema(content *TOMLContent, schemaPath string) (*ContentValidation, error)
+	LoadSchema(schemaPath string) error
+	GetSchema(contentType ContentType) (interface{}, error)
+	ValidateField(field string, value interface{}, schema interface{}) error
+}
+
+// ExpressionExtractor defines the interface for extracting expressions from content
+type ExpressionExtractor interface {
+	ExtractExpressions(data map[string]interface{}) (map[string]string, error)
+	ValidateExpression(expression string) error
+	ParseExpression(expression string) (interface{}, error)
+}
+
+// ReferenceResolver defines the interface for resolving cross-references
+type ReferenceResolver interface {
+	ResolveReferences(content *TOMLContent, repository *ContentRepository) error
+	ValidateReferences(references []string, repository *ContentRepository) (*ReferenceValidation, error)
+	FindMissingReferences(content *TOMLContent, repository *ContentRepository) ([]string, error)
+}
