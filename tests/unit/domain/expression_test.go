@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
 )
 
 func TestExpressionParser_BasicArithmetic(t *testing.T) {

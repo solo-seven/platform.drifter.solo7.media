@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
 )
 
 // RandomizationManagerImpl implements the RandomizationManager interface

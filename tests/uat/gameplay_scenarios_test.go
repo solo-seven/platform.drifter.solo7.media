@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/network"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

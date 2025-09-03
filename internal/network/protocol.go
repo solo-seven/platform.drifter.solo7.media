@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/solo7.media/platform.drifter.solo7.media/generated/proto"
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
+	platform_drifter_solo7_media "github.com/solo-seven/platform.drifter.solo7.media/generated/proto"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
 	protobuf "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -90,6 +90,15 @@ func (c *WebSocketConnection) Send(ctx context.Context, message *domain.NetworkM
 		return fmt.Errorf("failed to marshal protobuf message: %w", err)
 	}
 
+	// Apply a write deadline to avoid indefinite blocking
+	// Prefer context deadline if provided; otherwise, use a sensible default.
+	if dl, ok := ctx.Deadline(); ok {
+		_ = c.conn.SetWriteDeadline(dl)
+	} else {
+		_ = c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	}
+	defer func() { _ = c.conn.SetWriteDeadline(time.Time{}) }()
+
 	// Send via WebSocket
 	err = c.conn.WriteMessage(websocket.BinaryMessage, data)
 	if err != nil {
@@ -123,7 +132,7 @@ func (c *WebSocketConnection) Receive(ctx context.Context) (*domain.NetworkMessa
 	}
 
 	// Deserialize protobuf message
-	var pbMessage proto.NetworkMessage
+	var pbMessage platform_drifter_solo7_media.NetworkMessage
 	err = protobuf.Unmarshal(data, &pbMessage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal protobuf message: %w", err)
@@ -143,7 +152,9 @@ func (c *WebSocketConnection) Close() error {
 	if c.conn == nil {
 		return nil
 	}
-	return c.conn.Close()
+	err := c.conn.Close()
+	c.conn = nil
+	return err
 }
 
 // IsConnected checks if the connection is still active
@@ -162,8 +173,8 @@ func (c *WebSocketConnection) UpdateHeartbeat() {
 }
 
 // domainToProtoMessage converts a domain NetworkMessage to protobuf
-func (c *WebSocketConnection) domainToProtoMessage(msg *domain.NetworkMessage) (*proto.NetworkMessage, error) {
-	pbMsg := &proto.NetworkMessage{
+func (c *WebSocketConnection) domainToProtoMessage(msg *domain.NetworkMessage) (*platform_drifter_solo7_media.NetworkMessage, error) {
+	pbMsg := &platform_drifter_solo7_media.NetworkMessage{
 		Id:        msg.ID,
 		Timestamp: timestamppb.New(msg.Timestamp),
 	}
@@ -171,21 +182,21 @@ func (c *WebSocketConnection) domainToProtoMessage(msg *domain.NetworkMessage) (
 	// Convert message type
 	switch msg.Type {
 	case domain.PlayerInput:
-		pbMsg.Type = proto.MessageType_PLAYER_INPUT
+		pbMsg.Type = platform_drifter_solo7_media.MessageType_PLAYER_INPUT
 	case domain.ChatMessage:
-		pbMsg.Type = proto.MessageType_CHAT_MESSAGE
+		pbMsg.Type = platform_drifter_solo7_media.MessageType_CHAT_MESSAGE
 	case domain.AdminCommand:
-		pbMsg.Type = proto.MessageType_ADMIN_COMMAND
+		pbMsg.Type = platform_drifter_solo7_media.MessageType_ADMIN_COMMAND
 	case domain.StateUpdate:
-		pbMsg.Type = proto.MessageType_STATE_UPDATE
+		pbMsg.Type = platform_drifter_solo7_media.MessageType_STATE_UPDATE
 	case domain.AestheticEvent:
-		pbMsg.Type = proto.MessageType_AESTHETIC_EVENT
+		pbMsg.Type = platform_drifter_solo7_media.MessageType_AESTHETIC_EVENT
 	case domain.SystemNotification:
-		pbMsg.Type = proto.MessageType_SYSTEM_NOTIFICATION
+		pbMsg.Type = platform_drifter_solo7_media.MessageType_SYSTEM_NOTIFICATION
 	case domain.Heartbeat:
-		pbMsg.Type = proto.MessageType_HEARTBEAT
+		pbMsg.Type = platform_drifter_solo7_media.MessageType_HEARTBEAT
 	case domain.ConnectionNegotiation:
-		pbMsg.Type = proto.MessageType_CONNECTION_NEGOTIATION
+		pbMsg.Type = platform_drifter_solo7_media.MessageType_CONNECTION_NEGOTIATION
 	default:
 		return nil, fmt.Errorf("unknown message type: %v", msg.Type)
 	}
@@ -201,7 +212,7 @@ func (c *WebSocketConnection) domainToProtoMessage(msg *domain.NetworkMessage) (
 }
 
 // protoToDomainMessage converts a protobuf NetworkMessage to domain
-func (c *WebSocketConnection) protoToDomainMessage(pbMsg *proto.NetworkMessage) (*domain.NetworkMessage, error) {
+func (c *WebSocketConnection) protoToDomainMessage(pbMsg *platform_drifter_solo7_media.NetworkMessage) (*domain.NetworkMessage, error) {
 	msg := &domain.NetworkMessage{
 		ID:        pbMsg.Id,
 		Timestamp: pbMsg.Timestamp.AsTime(),
@@ -209,21 +220,21 @@ func (c *WebSocketConnection) protoToDomainMessage(pbMsg *proto.NetworkMessage) 
 
 	// Convert message type
 	switch pbMsg.Type {
-	case proto.MessageType_PLAYER_INPUT:
+	case platform_drifter_solo7_media.MessageType_PLAYER_INPUT:
 		msg.Type = domain.PlayerInput
-	case proto.MessageType_CHAT_MESSAGE:
+	case platform_drifter_solo7_media.MessageType_CHAT_MESSAGE:
 		msg.Type = domain.ChatMessage
-	case proto.MessageType_ADMIN_COMMAND:
+	case platform_drifter_solo7_media.MessageType_ADMIN_COMMAND:
 		msg.Type = domain.AdminCommand
-	case proto.MessageType_STATE_UPDATE:
+	case platform_drifter_solo7_media.MessageType_STATE_UPDATE:
 		msg.Type = domain.StateUpdate
-	case proto.MessageType_AESTHETIC_EVENT:
+	case platform_drifter_solo7_media.MessageType_AESTHETIC_EVENT:
 		msg.Type = domain.AestheticEvent
-	case proto.MessageType_SYSTEM_NOTIFICATION:
+	case platform_drifter_solo7_media.MessageType_SYSTEM_NOTIFICATION:
 		msg.Type = domain.SystemNotification
-	case proto.MessageType_HEARTBEAT:
+	case platform_drifter_solo7_media.MessageType_HEARTBEAT:
 		msg.Type = domain.Heartbeat
-	case proto.MessageType_CONNECTION_NEGOTIATION:
+	case platform_drifter_solo7_media.MessageType_CONNECTION_NEGOTIATION:
 		msg.Type = domain.ConnectionNegotiation
 	default:
 		return nil, fmt.Errorf("unknown protobuf message type: %v", pbMsg.Type)
@@ -260,7 +271,7 @@ func (c *WebSocketConnection) convertMessageData(msgType domain.MessageType, dat
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal data as JSON: %w", err)
 		}
-		return anypb.New(&proto.SystemNotification{
+		return anypb.New(&platform_drifter_solo7_media.SystemNotification{
 			Type:      "unknown",
 			Message:   string(jsonData),
 			Timestamp: timestamppb.Now(),
@@ -269,19 +280,19 @@ func (c *WebSocketConnection) convertMessageData(msgType domain.MessageType, dat
 }
 
 // convertProtoData converts protobuf Any to domain message data
-func (c *WebSocketConnection) convertProtoData(msgType proto.MessageType, data *anypb.Any) (map[string]interface{}, error) {
+func (c *WebSocketConnection) convertProtoData(msgType platform_drifter_solo7_media.MessageType, data *anypb.Any) (map[string]interface{}, error) {
 	switch msgType {
-	case proto.MessageType_PLAYER_INPUT:
+	case platform_drifter_solo7_media.MessageType_PLAYER_INPUT:
 		return c.convertProtoPlayerInputData(data)
-	case proto.MessageType_CHAT_MESSAGE:
+	case platform_drifter_solo7_media.MessageType_CHAT_MESSAGE:
 		return c.convertProtoChatMessageData(data)
-	case proto.MessageType_ADMIN_COMMAND:
+	case platform_drifter_solo7_media.MessageType_ADMIN_COMMAND:
 		return c.convertProtoAdminCommandData(data)
-	case proto.MessageType_STATE_UPDATE:
+	case platform_drifter_solo7_media.MessageType_STATE_UPDATE:
 		return c.convertProtoStateUpdateData(data)
-	case proto.MessageType_HEARTBEAT:
+	case platform_drifter_solo7_media.MessageType_HEARTBEAT:
 		return c.convertProtoHeartbeatData(data)
-	case proto.MessageType_CONNECTION_NEGOTIATION:
+	case platform_drifter_solo7_media.MessageType_CONNECTION_NEGOTIATION:
 		return c.convertProtoConnectionNegotiationData(data)
 	default:
 		// For unknown types, return empty map
@@ -309,7 +320,7 @@ func (c *WebSocketConnection) convertPlayerInputData(data map[string]interface{}
 		}
 	}
 
-	pbData := &proto.PlayerInputMessage{
+	pbData := &platform_drifter_solo7_media.PlayerInputMessage{
 		PlayerId:  playerID,
 		InputType: inputType,
 		Data:      properties,
@@ -319,7 +330,7 @@ func (c *WebSocketConnection) convertPlayerInputData(data map[string]interface{}
 }
 
 func (c *WebSocketConnection) convertProtoPlayerInputData(data *anypb.Any) (map[string]interface{}, error) {
-	var pbData proto.PlayerInputMessage
+	var pbData platform_drifter_solo7_media.PlayerInputMessage
 	err := data.UnmarshalTo(&pbData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal PlayerInputMessage: %w", err)
@@ -342,7 +353,7 @@ func (c *WebSocketConnection) convertChatMessageData(data map[string]interface{}
 	message, _ := data["message"].(string)
 	channel, _ := data["channel"].(string)
 
-	pbData := &proto.ChatMessage{
+	pbData := &platform_drifter_solo7_media.ChatMessage{
 		PlayerId:  playerID,
 		Message:   message,
 		Channel:   channel,
@@ -353,7 +364,7 @@ func (c *WebSocketConnection) convertChatMessageData(data map[string]interface{}
 }
 
 func (c *WebSocketConnection) convertProtoChatMessageData(data *anypb.Any) (map[string]interface{}, error) {
-	var pbData proto.ChatMessage
+	var pbData platform_drifter_solo7_media.ChatMessage
 	err := data.UnmarshalTo(&pbData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal ChatMessage: %w", err)
@@ -372,7 +383,7 @@ func (c *WebSocketConnection) convertProtoChatMessageData(data *anypb.Any) (map[
 func (c *WebSocketConnection) convertHeartbeatData(data map[string]interface{}) (*anypb.Any, error) {
 	connectionID, _ := data["connection_id"].(string)
 
-	pbData := &proto.Heartbeat{
+	pbData := &platform_drifter_solo7_media.Heartbeat{
 		ConnectionId: connectionID,
 		Timestamp:    timestamppb.Now(),
 	}
@@ -381,7 +392,7 @@ func (c *WebSocketConnection) convertHeartbeatData(data map[string]interface{}) 
 }
 
 func (c *WebSocketConnection) convertProtoHeartbeatData(data *anypb.Any) (map[string]interface{}, error) {
-	var pbData proto.Heartbeat
+	var pbData platform_drifter_solo7_media.Heartbeat
 	err := data.UnmarshalTo(&pbData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal Heartbeat: %w", err)
@@ -398,7 +409,7 @@ func (c *WebSocketConnection) convertProtoHeartbeatData(data *anypb.Any) (map[st
 // Placeholder implementations for other conversion methods
 func (c *WebSocketConnection) convertAdminCommandData(data map[string]interface{}) (*anypb.Any, error) {
 	// Implementation would go here
-	return anypb.New(&proto.AdminCommand{})
+	return anypb.New(&platform_drifter_solo7_media.AdminCommand{})
 }
 
 func (c *WebSocketConnection) convertProtoAdminCommandData(data *anypb.Any) (map[string]interface{}, error) {
@@ -408,7 +419,7 @@ func (c *WebSocketConnection) convertProtoAdminCommandData(data *anypb.Any) (map
 
 func (c *WebSocketConnection) convertStateUpdateData(data map[string]interface{}) (*anypb.Any, error) {
 	// Implementation would go here
-	return anypb.New(&proto.StateUpdateMessage{})
+	return anypb.New(&platform_drifter_solo7_media.StateUpdateMessage{})
 }
 
 func (c *WebSocketConnection) convertProtoStateUpdateData(data *anypb.Any) (map[string]interface{}, error) {
@@ -418,7 +429,7 @@ func (c *WebSocketConnection) convertProtoStateUpdateData(data *anypb.Any) (map[
 
 func (c *WebSocketConnection) convertConnectionNegotiationData(data map[string]interface{}) (*anypb.Any, error) {
 	// Implementation would go here
-	return anypb.New(&proto.ConnectionNegotiation{})
+	return anypb.New(&platform_drifter_solo7_media.ConnectionNegotiation{})
 }
 
 func (c *WebSocketConnection) convertProtoConnectionNegotiationData(data *anypb.Any) (map[string]interface{}, error) {

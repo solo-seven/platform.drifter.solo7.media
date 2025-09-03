@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
 )
 
 // ActionManagerImpl implements the ActionDefinitionManager interface

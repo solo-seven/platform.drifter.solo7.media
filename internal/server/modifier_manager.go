@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
 )
 
 // ModifierManagerImpl implements the ModifierManager interface

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
 )
 
 // TOMLParserImpl implements the TOMLParser interface

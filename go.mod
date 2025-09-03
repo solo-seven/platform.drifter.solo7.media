@@ -1,4 +1,4 @@
-module github.com/solo7.media/platform.drifter.solo7.media
+module github.com/solo-seven/platform.drifter.solo7.media
 
 go 1.21
 

@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/network"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/network"
 )
 
 // GameServerImpl implements the GameServer interface
@@ -19,13 +19,13 @@ type GameServerImpl struct {
 	connectionManager domain.ConnectionManager
 	networkProtocol   domain.NetworkProtocol
 	logger            domain.Logger
-	
+
 	// Server state
-	running           bool
-	mu                sync.RWMutex
-	ctx               context.Context
-	cancel            context.CancelFunc
-	
+	running bool
+	mu      sync.RWMutex
+	ctx     context.Context
+	cancel  context.CancelFunc
+
 	// Game state
 	worldState        *domain.WorldState
 	entityManager     domain.EntityManager
@@ -70,7 +70,7 @@ func (gs *GameServerImpl) Start(ctx context.Context) error {
 	go gs.gameLoop()
 
 	gs.logger.Info("Game server started", map[string]interface{}{
-		"max_connections": gs.config.GetMaxConnections(),
+		"max_connections":    gs.config.GetMaxConnections(),
 		"heartbeat_interval": gs.config.GetHeartbeatInterval(),
 	})
 
@@ -147,7 +147,7 @@ func (gs *GameServerImpl) HandleWebSocket(w http.ResponseWriter, r *http.Request
 
 	// Generate player ID for new connection
 	playerID := uuid.New()
-	
+
 	// Create WebSocket connection
 	wsConn := network.NewWebSocketConnection(conn, playerID, gs.logger)
 
@@ -161,9 +161,9 @@ func (gs *GameServerImpl) HandleWebSocket(w http.ResponseWriter, r *http.Request
 	}
 
 	gs.logger.Info("New player connected", map[string]interface{}{
-		"player_id":      playerID,
-		"connection_id":  wsConn.GetConnectionID(),
-		"total_players":  gs.connectionManager.GetPlayerCount(),
+		"player_id":     playerID,
+		"connection_id": wsConn.GetConnectionID(),
+		"total_players": gs.connectionManager.GetPlayerCount(),
 	})
 
 	// Send welcome message
@@ -239,7 +239,7 @@ func (gs *GameServerImpl) processMessage(conn domain.ClientConnection, playerID 
 // handlePlayerInput processes player input messages
 func (gs *GameServerImpl) handlePlayerInput(conn domain.ClientConnection, playerID domain.PlayerId, message *domain.NetworkMessage) error {
 	inputType := message.Data["input_type"]
-	
+
 	switch inputType {
 	case "movement":
 		return gs.handleMovementInput(conn, playerID, message)
@@ -460,8 +460,8 @@ func (gs *GameServerImpl) updateGameState() {
 // initializeWorldState creates the initial world state
 func initializeWorldState() *domain.WorldState {
 	return &domain.WorldState{
-		Regions:      make(map[domain.RegionId]domain.RegionState),
-		GlobalState:  domain.GlobalGameState{
+		Regions: make(map[domain.RegionId]domain.RegionState),
+		GlobalState: domain.GlobalGameState{
 			GameTime:   time.Now(),
 			GamePhase:  "active",
 			Properties: make(map[string]interface{}),
@@ -469,4 +469,3 @@ func initializeWorldState() *domain.WorldState {
 		PlayerStates: make(map[domain.PlayerId]domain.PlayerState),
 	}
 }
-

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
 )
 
 // RulesEngineImpl implements the RulesEngine interface
@@ -163,6 +163,8 @@ func (re *RulesEngineImpl) evaluateConditions(conditions []domain.Condition, dat
 		Party:   extractEntityData(data, "party"),
 		Terrain: extractEntityData(data, "terrain"),
 		Game:    extractEntityData(data, "game"),
+		// Add top-level event data to context
+		EventData: data,
 	}
 
 	// All conditions must be true (AND logic)
@@ -185,7 +187,15 @@ func (re *RulesEngineImpl) evaluateCondition(condition domain.Condition, ctx *do
 		expression = condition.Property
 	} else {
 		// Build simple comparison expression
-		expression = fmt.Sprintf("%s %s %v", condition.Property, condition.Operator, condition.Value)
+		// Handle string values by adding quotes
+		var valueStr string
+		switch v := condition.Value.(type) {
+		case string:
+			valueStr = fmt.Sprintf("\"%s\"", v)
+		default:
+			valueStr = fmt.Sprintf("%v", v)
+		}
+		expression = fmt.Sprintf("%s %s %s", condition.Property, condition.Operator, valueStr)
 	}
 
 	// Evaluate the expression

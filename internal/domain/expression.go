@@ -11,11 +11,12 @@ import (
 
 // ExpressionContext provides variables and functions available during expression evaluation
 type ExpressionContext struct {
-	Self    map[string]interface{} `json:"self"`    // Current entity (player, NPC, etc.)
-	Target  map[string]interface{} `json:"target"`  // Target entity (for combat, etc.)
-	Party   map[string]interface{} `json:"party"`   // Party/group context
-	Terrain map[string]interface{} `json:"terrain"` // Environmental context
-	Game    map[string]interface{} `json:"game"`    // Global game state
+	Self      map[string]interface{} `json:"self"`       // Current entity (player, NPC, etc.)
+	Target    map[string]interface{} `json:"target"`     // Target entity (for combat, etc.)
+	Party     map[string]interface{} `json:"party"`      // Party/group context
+	Terrain   map[string]interface{} `json:"terrain"`    // Environmental context
+	Game      map[string]interface{} `json:"game"`       // Global game state
+	EventData map[string]interface{} `json:"event_data"` // Top-level event data
 }
 
 // ExpressionResult represents the result of evaluating an expression

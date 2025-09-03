@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/network"
 )
 
 func TestConnectionManager_AddRemoveConnections(t *testing.T) {
@@ -57,12 +57,12 @@ func TestConnectionManager_AddRemoveConnections(t *testing.T) {
 		logger := &mockLogger{}
 		cm := network.NewConnectionManager(logger)
 		playerID := uuid.New()
-		
+
 		oldConn := &mockConnection{
 			playerID:     playerID,
 			connectionID: uuid.New().String(),
 		}
-		
+
 		newConn := &mockConnection{
 			playerID:     playerID,
 			connectionID: uuid.New().String(),
@@ -80,10 +80,10 @@ func TestConnectionManager_AddRemoveConnections(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 1, cm.GetConnectionCount()) // Still only one connection
 		assert.Equal(t, 1, cm.GetPlayerCount())
-		
+
 		// Verify old connection was closed
 		assert.True(t, oldConn.closed)
-		
+
 		// Verify new connection is active
 		retrievedConn, err := cm.GetPlayerConnection(context.Background(), playerID)
 		require.NoError(t, err)
@@ -169,7 +169,7 @@ func TestConnectionManager_Broadcast(t *testing.T) {
 		// Given
 		logger := &mockLogger{}
 		cm := network.NewConnectionManager(logger)
-		
+
 		conn1 := &mockConnection{
 			playerID:     uuid.New(),
 			connectionID: uuid.New().String(),
@@ -206,7 +206,7 @@ func TestConnectionManager_Broadcast(t *testing.T) {
 		// Given
 		logger := &mockLogger{}
 		cm := network.NewConnectionManager(logger)
-		
+
 		playerID := uuid.New()
 		conn := &mockConnection{
 			playerID:     playerID,
@@ -259,17 +259,17 @@ func TestConnectionManager_CleanupInactiveConnections(t *testing.T) {
 		// Given
 		logger := &mockLogger{}
 		cm := network.NewConnectionManager(logger)
-		
+
 		// Create connections with different heartbeat times
 		activeConn := &mockConnection{
-			playerID:     uuid.New(),
-			connectionID: uuid.New().String(),
+			playerID:      uuid.New(),
+			connectionID:  uuid.New().String(),
 			lastHeartbeat: time.Now(),
 		}
-		
+
 		inactiveConn := &mockConnection{
-			playerID:     uuid.New(),
-			connectionID: uuid.New().String(),
+			playerID:      uuid.New(),
+			connectionID:  uuid.New().String(),
 			lastHeartbeat: time.Now().Add(-2 * time.Hour), // 2 hours ago
 		}
 
@@ -333,4 +333,3 @@ func (m *mockConnection) GetLastHeartbeat() time.Time {
 func (m *mockConnection) UpdateHeartbeat() {
 	m.lastHeartbeat = time.Now()
 }
-

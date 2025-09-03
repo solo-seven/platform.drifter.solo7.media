@@ -3,7 +3,7 @@ package server_test
 import (
 	"testing"
 
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/server"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/server"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

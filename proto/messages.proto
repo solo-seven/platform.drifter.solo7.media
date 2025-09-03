@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package drifter.platform;
 
-option go_package = "github.com/solo7.media/platform.drifter.solo7.media/generated/proto";
+option go_package = "github.com/solo-seven/platform.drifter.solo7.media";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/any.proto";

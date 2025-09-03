@@ -5,12 +5,25 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/server"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/server"
+	"github.com/stretchr/testify/mock"
 )
+
+// setupMockLogger sets up common mock expectations for logger calls
+func setupMockLogger(logger *MockLogger) {
+	logger.On("Debug", "Rule registered", mock.AnythingOfType("map[string]interface {}")).Return()
+	logger.On("Debug", "Rule unregistered", mock.AnythingOfType("map[string]interface {}")).Return()
+	logger.On("Debug", "Event processed", mock.AnythingOfType("map[string]interface {}")).Return()
+	logger.On("Debug", mock.AnythingOfType("string"), mock.AnythingOfType("map[string]interface {}")).Return()
+	logger.On("Info", mock.AnythingOfType("string"), mock.AnythingOfType("map[string]interface {}")).Return()
+	logger.On("Warn", mock.AnythingOfType("string"), mock.AnythingOfType("map[string]interface {}")).Return()
+	logger.On("Error", mock.AnythingOfType("string"), mock.AnythingOfType("map[string]interface {}")).Return()
+}
 
 func TestRulesEngine_RegisterAndUnregisterRule(t *testing.T) {
 	logger := &MockLogger{}
+	setupMockLogger(logger)
 	engine := server.NewRulesEngine(logger)
 	ctx := context.Background()
 
@@ -42,6 +55,7 @@ func TestRulesEngine_RegisterAndUnregisterRule(t *testing.T) {
 
 func TestRulesEngine_ProcessEvent_SimpleConditions(t *testing.T) {
 	logger := &MockLogger{}
+	setupMockLogger(logger)
 	engine := server.NewRulesEngine(logger)
 	ctx := context.Background()
 
@@ -101,6 +115,7 @@ func TestRulesEngine_ProcessEvent_SimpleConditions(t *testing.T) {
 
 func TestRulesEngine_ProcessEvent_ExpressionConditions(t *testing.T) {
 	logger := &MockLogger{}
+	setupMockLogger(logger)
 	engine := server.NewRulesEngine(logger)
 	ctx := context.Background()
 
@@ -160,6 +175,7 @@ func TestRulesEngine_ProcessEvent_ExpressionConditions(t *testing.T) {
 
 func TestRulesEngine_ProcessEvent_ExpressionActions(t *testing.T) {
 	logger := &MockLogger{}
+	setupMockLogger(logger)
 	engine := server.NewRulesEngine(logger)
 	ctx := context.Background()
 
@@ -212,6 +228,7 @@ func TestRulesEngine_ProcessEvent_ExpressionActions(t *testing.T) {
 
 func TestRulesEngine_ProcessEvent_StateChanges(t *testing.T) {
 	logger := &MockLogger{}
+	setupMockLogger(logger)
 	engine := server.NewRulesEngine(logger)
 	ctx := context.Background()
 
@@ -277,6 +294,7 @@ func TestRulesEngine_ProcessEvent_StateChanges(t *testing.T) {
 
 func TestRulesEngine_ProcessEvent_AestheticEvents(t *testing.T) {
 	logger := &MockLogger{}
+	setupMockLogger(logger)
 	engine := server.NewRulesEngine(logger)
 	ctx := context.Background()
 
@@ -341,6 +359,7 @@ func TestRulesEngine_ProcessEvent_AestheticEvents(t *testing.T) {
 
 func TestRulesEngine_ProcessEvent_RulePriority(t *testing.T) {
 	logger := &MockLogger{}
+	setupMockLogger(logger)
 	engine := server.NewRulesEngine(logger)
 	ctx := context.Background()
 
@@ -413,6 +432,7 @@ func TestRulesEngine_ProcessEvent_RulePriority(t *testing.T) {
 
 func TestRulesEngine_ProcessEvent_ComplexExpressions(t *testing.T) {
 	logger := &MockLogger{}
+	setupMockLogger(logger)
 	engine := server.NewRulesEngine(logger)
 	ctx := context.Background()
 
@@ -475,6 +495,7 @@ func TestRulesEngine_ProcessEvent_ComplexExpressions(t *testing.T) {
 
 func TestRulesEngine_GetActiveRules(t *testing.T) {
 	logger := &MockLogger{}
+	setupMockLogger(logger)
 	engine := server.NewRulesEngine(logger)
 	ctx := context.Background()
 
@@ -515,6 +536,7 @@ func TestRulesEngine_GetActiveRules(t *testing.T) {
 
 func TestRulesEngine_ErrorHandling(t *testing.T) {
 	logger := &MockLogger{}
+	setupMockLogger(logger)
 	engine := server.NewRulesEngine(logger)
 	ctx := context.Background()
 
@@ -536,6 +558,7 @@ func TestRulesEngine_ErrorHandling(t *testing.T) {
 
 func TestRulesEngine_ConcurrentAccess(t *testing.T) {
 	logger := &MockLogger{}
+	setupMockLogger(logger)
 	engine := server.NewRulesEngine(logger)
 	ctx := context.Background()
 

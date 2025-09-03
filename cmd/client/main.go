@@ -14,9 +14,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/network"
 	"github.com/spf13/cobra"
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/domain"
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/network"
 )
 
 var (
@@ -162,7 +162,7 @@ func sendHeartbeat(ctx context.Context, conn domain.ClientConnection) {
 
 func interactiveLoop(ctx context.Context, conn domain.ClientConnection) {
 	scanner := bufio.NewScanner(os.Stdin)
-	
+
 	fmt.Println("\nAvailable commands:")
 	fmt.Println("  /help     - Show this help message")
 	fmt.Println("  /move <direction> - Move character (forward, back, left, right)")
@@ -344,4 +344,3 @@ func (l *consoleLogger) Fatal(msg string, fields map[string]interface{}) {
 	fmt.Printf("FATAL: %s %+v\n", msg, fields)
 	os.Exit(1)
 }
-

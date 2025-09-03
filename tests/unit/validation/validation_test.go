@@ -6,11 +6,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/solo7.media/platform.drifter.solo7.media/internal/validation"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/validation"
 )
 
 func TestValidateEntitySchema_Simple(t *testing.T) {
-	schema := filepath.Join("schemas", "entity.schema.json")
+	// Get the project root directory (go up from tests/unit/validation)
+	projectRoot := filepath.Join("..", "..", "..")
+	schema := filepath.Join(projectRoot, "schemas", "entity.schema.json")
 
 	entity := map[string]any{
 		"id":       "550e8400-e29b-41d4-a716-446655440000",
@@ -34,7 +36,9 @@ func TestValidateEntitySchema_Simple(t *testing.T) {
 }
 
 func TestValidateRuleSchema_Simple(t *testing.T) {
-	schema := filepath.Join("schemas", "rule.schema.json")
+	// Get the project root directory (go up from tests/unit/validation)
+	projectRoot := filepath.Join("..", "..", "..")
+	schema := filepath.Join(projectRoot, "schemas", "rule.schema.json")
 	rule := map[string]any{
 		"id":       "550e8400-e29b-41d4-a716-446655440000",
 		"priority": 10,
@@ -55,7 +59,9 @@ func TestValidateRuleSchema_Simple(t *testing.T) {
 }
 
 func TestValidateExpressionSchema_Simple(t *testing.T) {
-	schema := filepath.Join("schemas", "expression.schema.json")
+	// Get the project root directory (go up from tests/unit/validation)
+	projectRoot := filepath.Join("..", "..", "..")
+	schema := filepath.Join(projectRoot, "schemas", "expression.schema.json")
 	b := []byte(`"roll(\"1d6\") + self.level"`)
 	if err := validation.ValidateJSON(schema, b); err != nil {
 		t.Fatalf("expected valid expression, got error: %v", err)
@@ -63,7 +69,9 @@ func TestValidateExpressionSchema_Simple(t *testing.T) {
 }
 
 func TestValidateEntitySchema_InvalidMissingFields(t *testing.T) {
-	schema := filepath.Join("schemas", "entity.schema.json")
+	// Get the project root directory (go up from tests/unit/validation)
+	projectRoot := filepath.Join("..", "..", "..")
+	schema := filepath.Join(projectRoot, "schemas", "entity.schema.json")
 	b := []byte(`{"id":"550e8400-e29b-41d4-a716-446655440000"}`)
 	if err := validation.ValidateJSON(schema, b); err == nil {
 		t.Fatal("expected validation error for missing fields, got nil")
