@@ -51,6 +51,9 @@ func main() {
 	// Create gRPC server for player actions
 	grpcServer := network.NewGRPCServer(gameServer, gameLogger)
 	go func() {
+		gameLogger.Info("Starting gRPC server", map[string]interface{}{
+			"port": *port + 1,
+		})
 		if err := grpcServer.Start(*port + 1); err != nil {
 			gameLogger.Fatal("Failed to start gRPC server", map[string]interface{}{
 				"error": err,
@@ -79,13 +82,6 @@ func main() {
 				"error": err,
 			})
 		}
-	}()
-
-	// Start gRPC server
-	go func() {
-		gameLogger.Info("Starting gRPC server", map[string]interface{}{
-			"port": *port + 1,
-		})
 	}()
 
 	// Start game server
@@ -119,6 +115,13 @@ func main() {
 
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		gameLogger.Error("Error shutting down HTTP server", map[string]interface{}{
+			"error": err,
+		})
+	}
+
+	// Shutdown gRPC server
+	if err := grpcServer.Stop(); err != nil {
+		gameLogger.Error("Error shutting down gRPC server", map[string]interface{}{
 			"error": err,
 		})
 	}

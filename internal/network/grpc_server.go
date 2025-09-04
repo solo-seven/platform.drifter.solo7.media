@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
 	"google.golang.org/grpc"
 
@@ -16,6 +17,8 @@ type GRPCServer struct {
 	proto.UnimplementedMUDServiceServer
 	gameServer domain.GameServer
 	logger     domain.Logger
+	grpcServer *grpc.Server
+	listener   net.Listener
 }
 
 // NewGRPCServer creates a new gRPC server
@@ -33,17 +36,49 @@ func (s *GRPCServer) Start(port int) error {
 		return fmt.Errorf("failed to listen on port %d: %w", port, err)
 	}
 
-	grpcServer := grpc.NewServer()
-	proto.RegisterMUDServiceServer(grpcServer, s)
+	s.listener = lis
+	s.grpcServer = grpc.NewServer()
+	proto.RegisterMUDServiceServer(s.grpcServer, s)
 
 	s.logger.Info("Starting gRPC server", map[string]interface{}{
 		"port": port,
 	})
 
-	if err := grpcServer.Serve(lis); err != nil {
+	if err := s.grpcServer.Serve(lis); err != nil {
 		return fmt.Errorf("failed to serve gRPC: %w", err)
 	}
 
+	return nil
+}
+
+// Stop gracefully stops the gRPC server
+func (s *GRPCServer) Stop() error {
+	if s.grpcServer == nil {
+		s.logger.Warn("gRPC server is not running", map[string]interface{}{})
+		return nil
+	}
+
+	s.logger.Info("Stopping gRPC server", map[string]interface{}{})
+
+	// Gracefully stop the gRPC server
+	s.grpcServer.GracefulStop()
+
+	// Close the listener if it's still open
+	if s.listener != nil {
+		if err := s.listener.Close(); err != nil {
+			// Check if the error is because the listener is already closed
+			if !strings.Contains(err.Error(), "use of closed network connection") {
+				s.logger.Error("Failed to close listener", map[string]interface{}{
+					"error": err.Error(),
+				})
+				return fmt.Errorf("failed to close listener: %w", err)
+			}
+			// If it's already closed, that's fine - just log it
+			s.logger.Info("Listener was already closed", map[string]interface{}{})
+		}
+	}
+
+	s.logger.Info("gRPC server stopped successfully", map[string]interface{}{})
 	return nil
 }
 
