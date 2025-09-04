@@ -297,6 +297,21 @@ func (tp *TOMLParserImpl) extractContentType(data map[string]interface{}) (domai
 		if strings.HasPrefix(key, "items.") || strings.HasPrefix(key, "equipment.") {
 			return domain.ContentTypeItem, nil
 		}
+		if key == "items" {
+			// Check if this is a map containing item data
+			if itemsMap, ok := value.(map[string]interface{}); ok {
+				// Check if any of the values have item-like structure
+				for _, item := range itemsMap {
+					if itemMap, ok := item.(map[string]interface{}); ok {
+						if _, hasID := itemMap["id"]; hasID {
+							if idStr, ok := itemMap["id"].(string); ok && strings.HasPrefix(idStr, "item.") {
+								return domain.ContentTypeItem, nil
+							}
+						}
+					}
+				}
+			}
+		}
 		if strings.HasPrefix(key, "classes.") {
 			return domain.ContentTypeClass, nil
 		}
@@ -367,6 +382,26 @@ func (tp *TOMLParserImpl) extractID(data map[string]interface{}) (string, error)
 			if id, exists := valueMap["id"]; exists {
 				if idStr, ok := id.(string); ok {
 					return idStr, nil
+				}
+			}
+		}
+	}
+
+	// Special case for multi-item files (like equipment.toml)
+	// If we have an "items" section, we can't extract a single ID
+	// Return a placeholder that will be handled by the content loader
+	if items, exists := data["items"]; exists {
+		if itemsMap, ok := items.(map[string]interface{}); ok {
+			// Check if any of the items have IDs
+			for _, item := range itemsMap {
+				if itemMap, ok := item.(map[string]interface{}); ok {
+					if id, exists := itemMap["id"]; exists {
+						if idStr, ok := id.(string); ok {
+							// Return the first item's ID as a placeholder
+							// The content loader will handle creating separate content items
+							return idStr, nil
+						}
+					}
 				}
 			}
 		}

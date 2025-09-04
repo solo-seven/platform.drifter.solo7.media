@@ -206,6 +206,38 @@ func (cl *ContentLoader) loadFile(filePath string) error {
 		return fmt.Errorf("failed to parse file %s: %s", filePath, result.Error)
 	}
 
+	// Check if this is a multi-item file (like equipment.toml)
+	if result.Content.Type == domain.ContentTypeItem {
+		// Check if the data contains an "items" section with multiple items
+		if itemsData, ok := result.Content.Data["items"].(map[string]interface{}); ok {
+			// Process each item separately
+			for _, itemValue := range itemsData {
+				if itemMap, ok := itemValue.(map[string]interface{}); ok {
+					// Create a new content item for each item
+					itemContent := &domain.TOMLContent{
+						Type:     domain.ContentTypeItem,
+						ID:       itemMap["id"].(string),
+						Version:  result.Content.Version,
+						Metadata: result.Content.Metadata,
+						Data:     itemMap,
+					}
+
+					// Add to content repository
+					if err := cl.contentRepoManager.AddContent(itemContent); err != nil {
+						cl.logger.Warn("Failed to add item to repository", map[string]interface{}{
+							"content_id": itemContent.ID,
+							"error":      err.Error(),
+						})
+					}
+
+					// Store in loaded content
+					cl.loadedContent[itemContent.ID] = itemContent
+				}
+			}
+			return nil
+		}
+	}
+
 	// Add to content repository
 	if err := cl.contentRepoManager.AddContent(result.Content); err != nil {
 		cl.logger.Warn("Failed to add content to repository", map[string]interface{}{
@@ -322,8 +354,24 @@ func (cl *ContentLoader) processItem(content *domain.TOMLContent) error {
 	if itemType, ok := content.Data["type"].(string); ok {
 		itemData.Type = itemType
 	}
+	if weight, ok := content.Data["weight"].(int32); ok {
+		itemData.Weight = weight
+	}
 
-	// Extract from items data structure
+	// Extract properties - check if we have a properties section
+	if props, ok := content.Data["properties"].(map[string]interface{}); ok {
+		itemData.Properties = props
+	} else {
+		// If no properties section, copy all non-basic fields to properties
+		itemData.Properties = make(map[string]interface{})
+		for key, value := range content.Data {
+			if key != "id" && key != "name" && key != "description" && key != "type" && key != "weight" {
+				itemData.Properties[key] = value
+			}
+		}
+	}
+
+	// Extract from items data structure (for multi-item files)
 	if items, ok := content.Data["items"].(map[string]interface{}); ok {
 		for _, item := range items {
 			if itemMap, ok := item.(map[string]interface{}); ok {
@@ -341,6 +389,14 @@ func (cl *ContentLoader) processItem(content *domain.TOMLContent) error {
 				}
 				if props, ok := itemMap["properties"].(map[string]interface{}); ok {
 					itemData.Properties = props
+				} else {
+					// If no properties section, copy all non-basic fields to properties
+					itemData.Properties = make(map[string]interface{})
+					for key, value := range itemMap {
+						if key != "id" && key != "name" && key != "description" && key != "type" && key != "weight" {
+							itemData.Properties[key] = value
+						}
+					}
 				}
 			}
 		}
