@@ -1,0 +1,7 @@
+---
+description: This rule describes where to look for information
+globs:
+alwaysApply: true
+---
+The project is documented in the `/docs` directory which has the core principles and architecture and domain model.
+The project's core functionality must be expressed through running the server from the command line and connecting to it with a command line client that uses let's the user send commands via text and it translates the wire protocol to the server.

@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -13,10 +12,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/logger"
-	"github.com/solo-seven/platform.drifter.solo7.media/internal/network"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +31,7 @@ func main() {
 		Run:   runClient,
 	}
 
-	rootCmd.Flags().StringVarP(&serverURL, "server", "s", "ws://localhost:8080/ws", "WebSocket server URL")
+	rootCmd.Flags().StringVarP(&serverURL, "server", "s", "localhost:8081", "gRPC server address")
 	rootCmd.Flags().StringVarP(&playerID, "player", "p", "", "Player ID (generated if not provided)")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 
@@ -52,22 +49,7 @@ func runClient(cmd *cobra.Command, args []string) {
 	fmt.Printf("Connecting to server: %s\n", serverURL)
 	fmt.Printf("Player ID: %s\n", playerID)
 
-	// Parse server URL
-	u, err := url.Parse(serverURL)
-	if err != nil {
-		log.Fatalf("Invalid server URL: %v", err)
-	}
-
-	// Connect to WebSocket server
-	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Fatalf("Failed to connect to server: %v", err)
-	}
-	defer conn.Close()
-
-	fmt.Println("Connected to server successfully!")
-
-	// Create client connection
+	// Create logger
 	loggerFactory := logger.NewLoggerFactory()
 	gameLogger, err := loggerFactory.CreateLogger("game-client",
 		logger.WithVerbose(verbose),
@@ -76,7 +58,23 @@ func runClient(cmd *cobra.Command, args []string) {
 		log.Fatalf("Failed to create logger: %v", err)
 	}
 	defer gameLogger.(*logger.OTelLogger).Close()
-	clientConn := network.NewWebSocketConnection(conn, uuid.MustParse(playerID), gameLogger)
+
+	// Create MUD client
+	grpcAddr := serverURL
+	wsAddr := "ws://localhost:8080/ws"
+	client, err := NewMUDClient(grpcAddr, wsAddr, gameLogger)
+	if err != nil {
+		log.Fatalf("Failed to create MUD client: %v", err)
+	}
+	defer client.Close()
+
+	fmt.Println("Connected to server successfully!")
+
+	// Login
+	characterName := "TestCharacter"
+	if err := client.Login(context.Background(), playerID, characterName); err != nil {
+		log.Fatalf("Login failed: %v", err)
+	}
 
 	// Set up context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -86,14 +84,12 @@ func runClient(cmd *cobra.Command, args []string) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	// Start message receiver goroutine
-	go receiveMessages(ctx, clientConn)
-
-	// Start heartbeat goroutine
-	go sendHeartbeat(ctx, clientConn)
-
-	// Start interactive command loop
-	go interactiveLoop(ctx, clientConn)
+	// Start the client
+	go func() {
+		if err := client.Start(ctx); err != nil {
+			fmt.Printf("Client error: %v\n", err)
+		}
+	}()
 
 	// Wait for shutdown signal
 	<-sigChan

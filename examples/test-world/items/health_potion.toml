@@ -1,0 +1,11 @@
+# Health Potion
+template_id = "consumable.health_potion"
+name = "health potion"
+description = "A red liquid in a small glass vial. It smells of herbs and promises healing."
+type = "consumable"
+weight = 1
+
+[properties]
+healing = "2d4+2"
+uses = 1
+rarity = "common"

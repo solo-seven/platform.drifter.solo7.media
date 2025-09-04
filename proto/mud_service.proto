@@ -1,0 +1,264 @@
+syntax = "proto3";
+
+package drifter.mud;
+
+option go_package = "github.com/solo-seven/platform.drifter.solo7.media/generated/proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
+// MUD Service Definition
+service MUDService {
+  // Player Actions (gRPC)
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Move(MoveRequest) returns (MoveResponse);
+  rpc Look(LookRequest) returns (LookResponse);
+  rpc Get(GetRequest) returns (GetResponse);
+  rpc Drop(DropRequest) returns (DropResponse);
+  rpc Say(SayRequest) returns (SayResponse);
+  rpc Attack(AttackRequest) returns (AttackResponse);
+  rpc Use(UseRequest) returns (UseResponse);
+  rpc Inventory(InventoryRequest) returns (InventoryResponse);
+  rpc Talk(TalkRequest) returns (TalkResponse);
+  
+  // Admin Commands
+  rpc AdminCommand(AdminCommandRequest) returns (AdminCommandResponse);
+}
+
+// Request/Response Messages
+message LoginRequest {
+  string player_name = 1;
+  string character_name = 2;
+}
+
+message LoginResponse {
+  bool success = 1;
+  string message = 2;
+  string character_id = 3;
+  string current_location = 4;
+}
+
+message MoveRequest {
+  string character_id = 1;
+  string direction = 2; // north, south, east, west, up, down
+}
+
+message MoveResponse {
+  bool success = 1;
+  string message = 2;
+  string new_location = 3;
+}
+
+message LookRequest {
+  string character_id = 1;
+  string target = 2; // empty for current room, or specific item/npc
+}
+
+message LookResponse {
+  string description = 1;
+  repeated string exits = 2;
+  repeated string items = 3;
+  repeated string npcs = 4;
+  repeated string players = 5;
+}
+
+message GetRequest {
+  string character_id = 1;
+  string item_name = 2;
+}
+
+message GetResponse {
+  bool success = 1;
+  string message = 2;
+  string item_id = 3;
+}
+
+message DropRequest {
+  string character_id = 1;
+  string item_name = 2;
+}
+
+message DropResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message SayRequest {
+  string character_id = 1;
+  string message = 2;
+  string channel = 3; // say, shout, whisper
+  string target = 4; // for whisper
+}
+
+message SayResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message AttackRequest {
+  string character_id = 1;
+  string target = 2;
+  string weapon = 3;
+}
+
+message AttackResponse {
+  bool success = 1;
+  string message = 2;
+  int32 damage = 3;
+  string target_status = 4;
+}
+
+message UseRequest {
+  string character_id = 1;
+  string item_name = 2;
+  string target = 3; // optional target for the item
+}
+
+message UseResponse {
+  bool success = 1;
+  string message = 2;
+  repeated string effects = 3;
+}
+
+message InventoryRequest {
+  string character_id = 1;
+}
+
+message InventoryResponse {
+  repeated Item items = 1;
+  int32 capacity = 2;
+  int32 used_capacity = 3;
+}
+
+message TalkRequest {
+  string character_id = 1;
+  string npc_name = 2;
+  string topic = 3;
+}
+
+message TalkResponse {
+  string response = 1;
+  repeated string topics = 2;
+  bool conversation_ended = 3;
+}
+
+message AdminCommandRequest {
+  string admin_id = 1;
+  string command = 2;
+  map<string, string> parameters = 3;
+}
+
+message AdminCommandResponse {
+  bool success = 1;
+  string message = 2;
+  string result = 3;
+}
+
+// Data Types
+message Item {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string type = 4;
+  int32 weight = 5;
+  map<string, string> properties = 6;
+}
+
+message Character {
+  string id = 1;
+  string name = 2;
+  string current_location = 3;
+  int32 health = 4;
+  int32 max_health = 5;
+  int32 mana = 6;
+  int32 max_mana = 7;
+  map<string, int32> stats = 8;
+  repeated Item inventory = 9;
+}
+
+message Location {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string type = 4; // area or structure
+  repeated string exits = 5;
+  repeated string items = 6;
+  repeated string npcs = 7;
+  repeated string players = 8;
+  map<string, string> properties = 9;
+}
+
+// WebSocket Events
+message GameEvent {
+  string id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  oneof event {
+    ChatMessage chat_message = 3;
+    PlayerJoined player_joined = 4;
+    PlayerLeft player_left = 5;
+    RoomDescription room_description = 6;
+    PlayerStateUpdate player_state_update = 7;
+    CombatLog combat_log = 8;
+    SystemNotification system_notification = 9;
+    AestheticEvent aesthetic_event = 10;
+  }
+}
+
+message ChatMessage {
+  string player_id = 1;
+  string player_name = 2;
+  string message = 3;
+  string channel = 4;
+  string target = 5; // for whispers
+}
+
+message PlayerJoined {
+  string player_id = 1;
+  string player_name = 2;
+  string location = 3;
+}
+
+message PlayerLeft {
+  string player_id = 1;
+  string player_name = 2;
+}
+
+message RoomDescription {
+  string location_id = 1;
+  string description = 2;
+  repeated string exits = 3;
+  repeated string items = 4;
+  repeated string npcs = 5;
+  repeated string players = 6;
+}
+
+message PlayerStateUpdate {
+  string player_id = 1;
+  int32 health = 2;
+  int32 max_health = 3;
+  int32 mana = 4;
+  int32 max_mana = 5;
+  string current_location = 6;
+  map<string, int32> stats = 7;
+}
+
+message CombatLog {
+  string attacker_id = 1;
+  string target_id = 2;
+  int32 damage = 3;
+  string damage_type = 4;
+  string result = 5; // hit, miss, critical, etc.
+}
+
+message SystemNotification {
+  string type = 1;
+  string message = 2;
+  map<string, string> properties = 3;
+}
+
+message AestheticEvent {
+  string type = 1;
+  string location_id = 2;
+  string description = 3;
+  map<string, string> properties = 4;
+}

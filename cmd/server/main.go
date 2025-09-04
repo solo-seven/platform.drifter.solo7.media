@@ -40,33 +40,52 @@ func main() {
 
 	// Create server components
 	cm := network.NewConnectionManager(gameLogger)
-	protocol := network.NewWebSocketProtocol(gameLogger)
-	protocol.SetConnectionManager(cm)
 
 	// Create game server
-	gameServer := server.NewGameServer(config, cm, protocol, gameLogger)
+	gameServer := server.NewGameServer(config, cm, nil, gameLogger)
+
+	// Create WebSocket hub for real-time events
+	wsHub := network.NewWebSocketHub(gameLogger)
+	go wsHub.Start(context.Background())
+
+	// Create gRPC server for player actions
+	grpcServer := network.NewGRPCServer(gameServer, gameLogger)
+	go func() {
+		if err := grpcServer.Start(*port + 1); err != nil {
+			gameLogger.Fatal("Failed to start gRPC server", map[string]interface{}{
+				"error": err,
+			})
+		}
+	}()
 
 	// Set up HTTP server with WebSocket endpoint
 	mux := http.NewServeMux()
-	mux.HandleFunc("/ws", gameServer.HandleWebSocket)
+	mux.HandleFunc("/ws", wsHub.HandleWebSocket)
 
 	httpServer := &http.Server{
 		Addr:    fmt.Sprintf(":%d", *port),
 		Handler: mux,
 	}
 
-	// Start server
+	// Start HTTP server for WebSocket
 	go func() {
-		gameLogger.Info("Starting server", map[string]interface{}{
+		gameLogger.Info("Starting HTTP server for WebSocket", map[string]interface{}{
 			"port":        *port,
 			"config_file": *configFile,
 		})
 
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			gameLogger.Fatal("Failed to start server", map[string]interface{}{
+			gameLogger.Fatal("Failed to start HTTP server", map[string]interface{}{
 				"error": err,
 			})
 		}
+	}()
+
+	// Start gRPC server
+	go func() {
+		gameLogger.Info("Starting gRPC server", map[string]interface{}{
+			"port": *port + 1,
+		})
 	}()
 
 	// Start game server

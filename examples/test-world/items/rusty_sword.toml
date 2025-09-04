@@ -1,0 +1,11 @@
+# Rusty Sword
+template_id = "weapon.rusty_sword"
+name = "rusty sword"
+description = "A simple iron sword with some rust. It's not the sharpest weapon, but it will do in a pinch."
+type = "weapon"
+weight = 3
+
+[properties]
+damage = "1d6+1"
+durability = 80
+material = "iron"

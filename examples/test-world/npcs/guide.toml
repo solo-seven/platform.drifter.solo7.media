@@ -1,0 +1,19 @@
+# Guide NPC
+template_id = "npc.guide"
+name = "Old Guide"
+description = "An elderly man with a long white beard and kind eyes. He seems to know much about this place."
+
+[stats]
+health = 100
+max_health = 100
+mana = 50
+max_mana = 50
+
+[attributes]
+wisdom = 18
+intelligence = 16
+charisma = 14
+
+[ai]
+type = "friendly"
+conversation_topics = ["welcome", "directions", "advice"]

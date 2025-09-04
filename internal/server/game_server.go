@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
-	"github.com/solo-seven/platform.drifter.solo7.media/internal/network"
 )
 
 // GameServerImpl implements the GameServer interface
@@ -27,10 +26,11 @@ type GameServerImpl struct {
 	cancel  context.CancelFunc
 
 	// Game state
-	worldState        *domain.WorldState
-	entityManager     domain.EntityManager
-	rulesEngine       domain.RulesEngine
-	worldStateManager domain.WorldStateManager
+	world          *domain.World
+	gameLoop       *GameLoop
+	dslInterpreter domain.DSLInterpreter
+	actionService  domain.ActionService
+	eventBus       domain.EventBus
 }
 
 // NewGameServer creates a new game server instance
@@ -40,15 +40,27 @@ func NewGameServer(
 	networkProtocol domain.NetworkProtocol,
 	logger domain.Logger,
 ) *GameServerImpl {
+	// Create action service
+	actionService := NewActionService(logger)
+
+	// Create event bus
+	eventBus := NewEventBus(logger)
+
+	// Create DSL interpreter
+	dslInterpreter := NewDSLInterpreter(logger)
+
+	// Create game loop
+	gameLoop := NewGameLoop(10, actionService, eventBus, logger) // 10 ticks per second
+
 	return &GameServerImpl{
 		config:            config,
 		connectionManager: connectionManager,
 		networkProtocol:   networkProtocol,
 		logger:            logger,
-		worldState:        initializeWorldState(),
-		entityManager:     NewEntityManager(logger),
-		rulesEngine:       NewRulesEngine(logger),
-		worldStateManager: NewWorldStateManager(logger),
+		gameLoop:          gameLoop,
+		dslInterpreter:    dslInterpreter,
+		actionService:     actionService,
+		eventBus:          eventBus,
 	}
 }
 
@@ -67,7 +79,7 @@ func (gs *GameServerImpl) Start(ctx context.Context) error {
 	// Start background tasks
 	go gs.heartbeatMonitor()
 	go gs.connectionCleanup()
-	go gs.gameLoop()
+	go gs.runGameLoop()
 
 	gs.logger.Info("Game server started", map[string]interface{}{
 		"max_connections":    gs.config.GetMaxConnections(),
@@ -100,24 +112,24 @@ func (gs *GameServerImpl) IsRunning() bool {
 	return gs.running
 }
 
-// GetEntityManager returns the entity manager
-func (gs *GameServerImpl) GetEntityManager() domain.EntityManager {
-	return gs.entityManager
-}
-
-// GetRulesEngine returns the rules engine
-func (gs *GameServerImpl) GetRulesEngine() domain.RulesEngine {
-	return gs.rulesEngine
-}
-
-// GetWorldStateManager returns the world state manager
-func (gs *GameServerImpl) GetWorldStateManager() domain.WorldStateManager {
-	return gs.worldStateManager
-}
-
 // GetConnectionManager returns the connection manager
 func (gs *GameServerImpl) GetConnectionManager() domain.ConnectionManager {
 	return gs.connectionManager
+}
+
+// GetEntityManager returns a placeholder entity manager
+func (gs *GameServerImpl) GetEntityManager() domain.EntityManager {
+	return nil
+}
+
+// GetRulesEngine returns a placeholder rules engine
+func (gs *GameServerImpl) GetRulesEngine() domain.RulesEngine {
+	return nil
+}
+
+// GetWorldStateManager returns a placeholder world state manager
+func (gs *GameServerImpl) GetWorldStateManager() domain.WorldStateManager {
+	return nil
 }
 
 // GetNetworkProtocol returns the network protocol
@@ -148,29 +160,19 @@ func (gs *GameServerImpl) HandleWebSocket(w http.ResponseWriter, r *http.Request
 	// Generate player ID for new connection
 	playerID := uuid.New()
 
-	// Create WebSocket connection
-	wsConn := network.NewWebSocketConnection(conn, playerID, gs.logger)
-
-	// Add to connection manager
-	if err := gs.connectionManager.AddConnection(gs.ctx, wsConn); err != nil {
-		gs.logger.Error("Failed to add connection", map[string]interface{}{
-			"player_id": playerID,
-			"error":     err,
-		})
-		return
-	}
+	// The WebSocket hub will handle the connection
+	// This is just a placeholder for now
+	gs.logger.Info("WebSocket connection established", map[string]interface{}{
+		"player_id": playerID,
+	})
 
 	gs.logger.Info("New player connected", map[string]interface{}{
 		"player_id":     playerID,
-		"connection_id": wsConn.GetConnectionID(),
 		"total_players": gs.connectionManager.GetPlayerCount(),
 	})
 
-	// Send welcome message
-	gs.sendWelcomeMessage(wsConn, playerID)
-
-	// Handle messages from this connection
-	gs.handleConnection(wsConn, playerID)
+	// The WebSocket hub will handle messages
+	// This is just a placeholder for now
 }
 
 // handleConnection handles messages from a specific connection
@@ -430,8 +432,8 @@ func (gs *GameServerImpl) connectionCleanup() {
 	}
 }
 
-// gameLoop runs the main game loop
-func (gs *GameServerImpl) gameLoop() {
+// runGameLoop runs the main game loop
+func (gs *GameServerImpl) runGameLoop() {
 	ticker := time.NewTicker(100 * time.Millisecond) // 10 FPS
 	defer ticker.Stop()
 
