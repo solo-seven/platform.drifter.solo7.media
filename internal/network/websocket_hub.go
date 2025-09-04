@@ -3,6 +3,7 @@ package network
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -46,7 +47,7 @@ type WebSocketConnection struct {
 	// Connection ID
 	id string
 	// Player ID
-	playerID string
+	playerID domain.PlayerId
 	// Last heartbeat time
 	lastHeartbeat time.Time
 	// Hub reference
@@ -64,6 +65,19 @@ func NewWebSocketHub(logger domain.Logger) *WebSocketHub {
 		broadcast:        make(chan *proto.GameEvent),
 		sendToConnection: make(chan *ConnectionMessage),
 		logger:           logger,
+	}
+}
+
+// NewWebSocketConnection creates a new WebSocket connection that implements ClientConnection
+func NewWebSocketConnection(conn *websocket.Conn, playerID domain.PlayerId, logger domain.Logger) *WebSocketConnection {
+	return &WebSocketConnection{
+		conn:          conn,
+		send:          make(chan []byte, 256),
+		id:            uuid.New().String(),
+		playerID:      playerID,
+		lastHeartbeat: time.Now(),
+		hub:           nil, // Will be set when registered with a hub
+		logger:        logger,
 	}
 }
 
@@ -138,7 +152,7 @@ func (h *WebSocketHub) SendToConnection(connectionID string, message *proto.Game
 }
 
 // SendToPlayer sends a message to a specific player
-func (h *WebSocketHub) SendToPlayer(playerID string, message *proto.GameEvent) {
+func (h *WebSocketHub) SendToPlayer(playerID domain.PlayerId, message *proto.GameEvent) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
@@ -191,12 +205,19 @@ func (h *WebSocketHub) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Extract player ID from query parameters or headers
-	playerID := r.URL.Query().Get("player_id")
-	if playerID == "" {
-		playerID = r.Header.Get("X-Player-ID")
+	playerIDStr := r.URL.Query().Get("player_id")
+	if playerIDStr == "" {
+		playerIDStr = r.Header.Get("X-Player-ID")
 	}
-	if playerID == "" {
-		playerID = uuid.New().String()
+	if playerIDStr == "" {
+		playerIDStr = uuid.New().String()
+	}
+
+	// Parse the player ID string as a UUID
+	playerID, err := uuid.Parse(playerIDStr)
+	if err != nil {
+		// If parsing fails, generate a new UUID
+		playerID = uuid.New()
 	}
 
 	wsConn := &WebSocketConnection{
@@ -288,7 +309,7 @@ func (c *WebSocketConnection) readPump() {
 }
 
 // GetPlayerID returns the player ID for this connection
-func (c *WebSocketConnection) GetPlayerID() string {
+func (c *WebSocketConnection) GetPlayerID() domain.PlayerId {
 	return c.playerID
 }
 
@@ -310,4 +331,78 @@ func (c *WebSocketConnection) GetLastHeartbeat() time.Time {
 // UpdateHeartbeat updates the last heartbeat time
 func (c *WebSocketConnection) UpdateHeartbeat() {
 	c.lastHeartbeat = time.Now()
+}
+
+// Send sends a NetworkMessage through the WebSocket connection
+func (c *WebSocketConnection) Send(ctx context.Context, message *domain.NetworkMessage) error {
+	if c.conn == nil {
+		return fmt.Errorf("connection is closed")
+	}
+
+	// Validate message data for player input messages
+	if message.Type == domain.PlayerInput {
+		if playerID, ok := message.Data["player_id"].(string); !ok || playerID == "" {
+			return fmt.Errorf("missing or invalid player_id in player input message")
+		}
+	}
+
+	// Convert NetworkMessage to JSON
+	data, err := json.Marshal(message)
+	if err != nil {
+		return fmt.Errorf("failed to marshal message: %w", err)
+	}
+
+	// Send through the WebSocket connection
+	select {
+	case c.send <- data:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		return fmt.Errorf("connection send buffer is full")
+	}
+}
+
+// Receive receives a NetworkMessage from the WebSocket connection
+func (c *WebSocketConnection) Receive(ctx context.Context) (*domain.NetworkMessage, error) {
+	if c.conn == nil {
+		return nil, fmt.Errorf("connection is closed")
+	}
+
+	// Set read deadline
+	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+
+	// Read message from WebSocket
+	_, data, err := c.conn.ReadMessage()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read message: %w", err)
+	}
+
+	// Parse JSON to NetworkMessage
+	var message domain.NetworkMessage
+	if err := json.Unmarshal(data, &message); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal message: %w", err)
+	}
+
+	// Update heartbeat on successful message receive
+	c.UpdateHeartbeat()
+
+	return &message, nil
+}
+
+// Close closes the WebSocket connection
+func (c *WebSocketConnection) Close() error {
+	if c.conn == nil {
+		return nil
+	}
+
+	// Close the send channel
+	if c.send != nil {
+		close(c.send)
+	}
+
+	// Close the WebSocket connection
+	err := c.conn.Close()
+	c.conn = nil
+	return err
 }
