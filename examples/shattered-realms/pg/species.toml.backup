@@ -14,10 +14,16 @@ constitution = 1
 chaos_affinity = 3  # Custom attribute
 
 [species.void_touched.abilities]
-void_sight = {   id = "ability.void_sight",   description = "Can see reality instabilities",   effect = "detect_reality_level(range=60)" }
+void_sight = {
+  id = "ability.void_sight",
+  description = "Can see reality instabilities",
+  effect = 'detect_reality_level(range=60)'
+}
 
-stability_drain = {   id = "ability.stability_drain",    uses = { per = "long_rest", count = 1 },
-  effect = "target_location.reality_stability -= roll("1d6"); heal(self, roll("1d4"))"
+stability_drain = {
+  id = "ability.stability_drain", 
+  uses = { per = "long_rest", count = 1 },
+  effect = 'target_location.reality_stability -= roll("1d6"); heal(self, roll("1d4"))'
 }
 
 [species.void_touched.resistances]

@@ -289,15 +289,97 @@ func (tp *TOMLParserImpl) extractContentType(data map[string]interface{}) (domai
 		}
 	}
 
-	return "", fmt.Errorf("unable to determine content type")
+	// Try to infer from section names (for shattered-realms format)
+	for key, value := range data {
+		if strings.HasPrefix(key, "npcs.") || strings.HasPrefix(key, "creatures.") {
+			return domain.ContentTypeMonster, nil
+		}
+		if strings.HasPrefix(key, "items.") || strings.HasPrefix(key, "equipment.") {
+			return domain.ContentTypeItem, nil
+		}
+		if strings.HasPrefix(key, "classes.") {
+			return domain.ContentTypeClass, nil
+		}
+		if strings.HasPrefix(key, "species.") {
+			return domain.ContentTypeSpecies, nil
+		}
+		if strings.HasPrefix(key, "locations.") || strings.HasPrefix(key, "regions.") {
+			return domain.ContentTypeLocation, nil
+		}
+		if strings.HasPrefix(key, "world_book") {
+			return domain.ContentTypeLocation, nil
+		}
+		if strings.HasPrefix(key, "behavior_profiles.") {
+			return domain.ContentTypeMechanic, nil
+		}
+		if strings.HasPrefix(key, "encounters.") {
+			return domain.ContentTypeEncounter, nil
+		}
+		if strings.HasPrefix(key, "rules.") || strings.HasPrefix(key, "mechanics.") {
+			return domain.ContentTypeMechanic, nil
+		}
+		// Check if value is a map with nested content
+		if valueMap, ok := value.(map[string]interface{}); ok {
+			if id, exists := valueMap["id"]; exists {
+				if idStr, ok := id.(string); ok {
+					parts := strings.Split(idStr, ".")
+					if len(parts) > 0 {
+						switch parts[0] {
+						case "npc", "creature":
+							return domain.ContentTypeMonster, nil
+						case "item", "equipment":
+							return domain.ContentTypeItem, nil
+						case "class":
+							return domain.ContentTypeClass, nil
+						case "species":
+							return domain.ContentTypeSpecies, nil
+						case "location", "district", "region":
+							return domain.ContentTypeLocation, nil
+						case "behavior", "profile":
+							return domain.ContentTypeMechanic, nil
+						case "encounter":
+							return domain.ContentTypeEncounter, nil
+						case "rule", "mechanic":
+							return domain.ContentTypeMechanic, nil
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// If we still can't determine the type, try to infer from the file path or content structure
+	// This is a fallback for files that don't follow standard patterns
+	return domain.ContentTypeMechanic, nil // Default to mechanic for unknown content
 }
 
 func (tp *TOMLParserImpl) extractID(data map[string]interface{}) (string, error) {
+	// Try to get ID from top-level field first
 	if idValue, exists := data["id"]; exists {
 		if idStr, ok := idValue.(string); ok {
 			return idStr, nil
 		}
 	}
+
+	// For shattered-realms format, look for ID in nested content
+	for _, value := range data {
+		if valueMap, ok := value.(map[string]interface{}); ok {
+			if id, exists := valueMap["id"]; exists {
+				if idStr, ok := id.(string); ok {
+					return idStr, nil
+				}
+			}
+		}
+	}
+
+	// If no ID found, generate one from the first section key
+	for key := range data {
+		if strings.Contains(key, ".") {
+			// Use the section key as ID
+			return key, nil
+		}
+	}
+
 	return "", fmt.Errorf("ID field not found or invalid")
 }
 

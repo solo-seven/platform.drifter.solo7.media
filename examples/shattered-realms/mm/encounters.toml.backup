@@ -8,9 +8,19 @@ environment_types = ["any"]
 stability_requirements = "10-40"
 
 [encounter_types.reality_storm.phases]
-warning = {   duration = "2_rounds",   effects = ["reality_stability -= 5 per round", "add_condition("disoriented", all_creatures)"] }
+warning = {
+  duration = "2_rounds",
+  effects = ['reality_stability -= 5 per round', 'add_condition("disoriented", all_creatures)']
+}
 
-peak_storm = {   duration = "3_rounds",    effects = [     "reality_stability -= roll("2d6") per round",     "random_teleportation(chance=0.2, distance="30_feet")",     "wild_magic_surge(chance=0.4)"   ] }
+peak_storm = {
+  duration = "3_rounds", 
+  effects = [
+    'reality_stability -= roll("2d6") per round',
+    'random_teleportation(chance=0.2, distance="30_feet")',
+    'wild_magic_surge(chance=0.4)'
+  ]
+}
 
 [encounter_types.stability_breach]
 id = "encounter.stability_breach"
@@ -21,6 +31,6 @@ composition_rules = [
   { creature = "chaos_spawn", count = "2d6", condition = "party_level >= 5" }
 ]
 environmental_effects = [
-  "reality_stability starts at roll("2d20") + 20",
-  "decreases by roll("1d4") each round"
+  'reality_stability starts at roll("2d20") + 20',
+  'decreases by roll("1d4") each round'
 ]

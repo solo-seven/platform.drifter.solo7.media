@@ -41,6 +41,27 @@ func main() {
 	// Create server components
 	cm := network.NewConnectionManager(gameLogger)
 
+	// Create content repository manager
+	contentRepoManager := server.NewContentRepositoryManager(gameLogger)
+
+	// Create TOML parser
+	tomlParser := server.NewTOMLParser(gameLogger)
+
+	// Create content loader
+	contentLoader := server.NewContentLoader(
+		gameLogger,
+		tomlParser,
+		contentRepoManager,
+		"examples/shattered-realms",
+	)
+
+	// Load content
+	if err := contentLoader.LoadAllContent(); err != nil {
+		gameLogger.Fatal("Failed to load content", map[string]interface{}{
+			"error": err,
+		})
+	}
+
 	// Create game server
 	gameServer := server.NewGameServer(config, cm, nil, gameLogger)
 
@@ -49,7 +70,7 @@ func main() {
 	go wsHub.Start(context.Background())
 
 	// Create gRPC server for player actions
-	grpcServer := network.NewGRPCServer(gameServer, gameLogger)
+	grpcServer := network.NewGRPCServer(gameServer, gameLogger, contentLoader)
 	go func() {
 		gameLogger.Info("Starting gRPC server", map[string]interface{}{
 			"port": *port + 1,

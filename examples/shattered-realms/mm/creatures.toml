@@ -17,23 +17,14 @@ charisma = 15
 chaos_affinity = 8
 
 [npcs.fracture_wraith.abilities]
-phase_through_reality = {
-  description = "Move through solid matter in low-stability areas",
-  condition = 'reality_stability < 40',
-  movement_type = "incorporeal"
-}
+phase_through_reality = {   description = "Move through solid matter in low-stability areas",   condition = "reality_stability < 40",   movement_type = "incorporeal" }
 
-destabilize_touch = {
-  attack_bonus = 7,
-  damage = 'roll("2d6") + 3',
-  damage_type = "necrotic",
-  additional_effect = 'reality_stability -= roll("1d4")'
-}
+destabilize_touch = {   attack_bonus = 7,   damage = "roll("2d6") + 3",   damage_type = "necrotic",   additional_effect = "reality_stability -= roll("1d4")" }
 
 [npcs.fracture_wraith.behavior]
 preferred_stability = "0-30"
-aggression_modifier = 'reality_stability > 60 ? -2 : +3'
-flee_condition = 'reality_stability > 90 || self.health < 0.25'
+aggression_modifier = "reality_stability > 60 ? -2 : +3"
+flee_condition = "reality_stability > 90 || self.health < 0.25"
 
 [npcs.stability_elemental]
 id = "npc.stability_elemental"
@@ -48,18 +39,8 @@ wisdom = 14
 chaos_affinity = 0  # Immune to chaos
 
 [npcs.stability_elemental.abilities]
-reality_reinforcement = {
-  area_effect = "30_foot_radius",
-  effect = 'reality_stability += roll("1d4") per turn (max 100)'
-}
+reality_reinforcement = {   area_effect = "30_foot_radius",   effect = "reality_stability += roll("1d4") per turn (max 100)" }
 
-stability_beam = {
-  range = 120,
-  attack_bonus = 8,
-  effect = '''
-    if (target.chaos_affinity > 0) {
-      deal(target, roll("3d8"), type="radiant");
-      suppress_chaos_abilities(target, duration="1_minute")
-    }
-  '''
+stability_beam = {   range = 120,   attack_bonus = 8,   effect = """     if (target.chaos_affinity > 0) {       deal(target, roll("3d8"), type="radiant");       suppress_chaos_abilities(target, duration="1_minute")     }
+  """
 }

@@ -32,6 +32,15 @@ social_structure = "fluid_tribal"
 dominant_locations = ["flux_bazaar", "fracture_wastes"]
 
 [cultures.chaos_dancers.traditions]
-coming_of_age = {   name = "First Surge",   requirement = "survive_chaos_storm_solo",   reward = "chaos_affinity +1, clan_tattoo" }
+coming_of_age = {
+  name = "First Surge",
+  requirement = "survive_chaos_storm_solo",
+  reward = "chaos_affinity +1, clan_tattoo"
+}
 
-seasonal_gathering = {   name = "Convergence Festival",    frequency = "annual",   location = "wherever_reality_is_weakest",   activities = ["chaos_dancing", "instability_contests", "mutation_celebration"] }
+seasonal_gathering = {
+  name = "Convergence Festival", 
+  frequency = "annual",
+  location = "wherever_reality_is_weakest",
+  activities = ["chaos_dancing", "instability_contests", "mutation_celebration"]
+}

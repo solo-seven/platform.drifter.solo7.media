@@ -11,13 +11,13 @@ name = "Stability Storm"
 frequency = "weekly"
 duration = "2d6_hours"
 conditions = [
-  "reality_stability increases by 2 per hour",
-  "chaos_abilities suffer disadvantage", 
-  "stabilizer_items recharge faster"
+  'reality_stability increases by 2 per hour',
+  'chaos_abilities suffer disadvantage', 
+  'stabilizer_items recharge faster'
 ]
 side_effects = [
-  "magic_items_glow_brightly",
-  "chaotic_creatures_seek_shelter"
+  'magic_items_glow_brightly',
+  'chaotic_creatures_seek_shelter'
 ]
 
 [environmental_systems.reality_weather.patterns.chaos_winds]
@@ -35,7 +35,7 @@ random_color_changes = true
 reality_stability_modifier = -5
 spell_failure_chance = 0.25
 effects = [
-  "random_polymorph(duration="10_minutes", chance=0.1)",
-  "temporary_ability_score_swap",
-  "spoken_words_become_visible"
+  'random_polymorph(duration="10_minutes", chance=0.1)',
+  'temporary_ability_score_swap',
+  'spoken_words_become_visible'
 ]

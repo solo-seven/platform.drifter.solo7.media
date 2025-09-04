@@ -10,13 +10,13 @@ id = "skill.stability_weaving"
 name = "Stability Weaving"
 category = "reality_manipulation"
 governing_attributes = ["intelligence", "wisdom"]
-description = "Art of reinforcing reality"s structure"
+description = "Art of reinforcing reality's structure"
 
 [skills.stability_weaving.applications.emergency_stabilization]
 context = "critical_failure"
-difficulty = "DC_15 + (50 - reality_stability) / 5"
-success_effect = "reality_stability += roll("2d4") + skill_modifier"
-failure_effect = "reality_stability -= roll("1d4"); add_condition(self, "disoriented")"
+difficulty = 'DC_15 + (50 - reality_stability) / 5'
+success_effect = 'reality_stability += roll("2d4") + skill_modifier'
+failure_effect = 'reality_stability -= roll("1d4"); add_condition(self, "disoriented")'
 
 [skills.chaos_channeling]
 id = "skill.chaos_channeling" 
@@ -26,9 +26,9 @@ governing_attributes = ["charisma", "chaos_affinity"]
 
 [skills.chaos_channeling.applications.controlled_surge]
 context = "offensive_magic"
-difficulty = "DC_12 + (reality_stability > 75 ? 5 : 0)"
-success_effect = """
+difficulty = 'DC_12 + (reality_stability > 75 ? 5 : 0)'
+success_effect = '''
   damage = roll("1d8") + chaos_affinity;
   if (reality_stability < 40) damage += roll("1d4");
   deal(target, damage, type="chaos")
-"""
+'''

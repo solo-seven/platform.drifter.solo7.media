@@ -14,4 +14,7 @@ imports = [
   "core_mechanics.chaos_affinity",
   "shattered_coast_region.flux_bazaar"
 ]
-requires = {    core_mechanics = ">=1.2.0",   shattered_coast_region = ">=1.0.0"  }
+requires = { 
+  core_mechanics = ">=1.2.0",
+  shattered_coast_region = ">=1.0.0" 
+}

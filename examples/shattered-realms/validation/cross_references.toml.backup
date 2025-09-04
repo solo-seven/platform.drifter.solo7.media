@@ -2,14 +2,20 @@
 
 [validation_rules]
 # Ensure all referenced abilities exist
-ability_references = {   pattern = "ability\.[a-z_]+",   must_exist_in = "abilities/*.toml" }
+ability_references = {
+  pattern = 'ability\.[a-z_]+',
+  must_exist_in = "abilities/*.toml"
+}
 
 # Verify stability thresholds are consistent
-stability_thresholds = {   chaos_surge_risk = { min = 0, max = 50 },
+stability_thresholds = {
+  chaos_surge_risk = { min = 0, max = 50 },
   fracture_wraith_preference = { min = 0, max = 30 },
   stability_storm_trigger = { min = 75, max = 100 }
 }
 
 # Check that all locations have valid stability ranges
-location_stability = {   all_locations_must_have = "base_reality_stability",   valid_range = { min = 0, max = 150 }
+location_stability = {
+  all_locations_must_have = "base_reality_stability",
+  valid_range = { min = 0, max = 150 }
 }

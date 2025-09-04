@@ -10,22 +10,25 @@ import (
 
 	"github.com/solo-seven/platform.drifter.solo7.media/generated/proto"
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/server"
 )
 
 // GRPCServer implements the MUDService gRPC server
 type GRPCServer struct {
 	proto.UnimplementedMUDServiceServer
-	gameServer domain.GameServer
-	logger     domain.Logger
-	grpcServer *grpc.Server
-	listener   net.Listener
+	gameServer    domain.GameServer
+	logger        domain.Logger
+	grpcServer    *grpc.Server
+	listener      net.Listener
+	contentLoader *server.ContentLoader
 }
 
 // NewGRPCServer creates a new gRPC server
-func NewGRPCServer(gameServer domain.GameServer, logger domain.Logger) *GRPCServer {
+func NewGRPCServer(gameServer domain.GameServer, logger domain.Logger, contentLoader *server.ContentLoader) *GRPCServer {
 	return &GRPCServer{
-		gameServer: gameServer,
-		logger:     logger,
+		gameServer:    gameServer,
+		logger:        logger,
+		contentLoader: contentLoader,
 	}
 }
 
@@ -122,14 +125,38 @@ func (s *GRPCServer) Look(ctx context.Context, req *proto.LookRequest) (*proto.L
 		"target":       req.Target,
 	})
 
-	// TODO: Implement actual look logic
-	// For now, return a mock response
+	// If no target specified, show current location
+	if req.Target == "" {
+		// For now, default to Nexus City - Stable Quarter
+		location := s.contentLoader.GetLocation("district.stable_quarter")
+		if location == nil {
+			// Fallback to any available location
+			locations := s.contentLoader.GetAllLocations()
+			for _, loc := range locations {
+				location = loc
+				break
+			}
+		}
+
+		if location != nil {
+			return &proto.LookResponse{
+				Description: location.Description,
+				Exits:       location.Exits,
+				Items:       []string{}, // TODO: Get actual items in location
+				Npcs:        []string{}, // TODO: Get actual NPCs in location
+				Players:     []string{}, // TODO: Get actual players in location
+			}, nil
+		}
+	}
+
+	// Look at specific target
+	// TODO: Implement looking at specific items, NPCs, etc.
 	return &proto.LookResponse{
-		Description: "You are in a dimly lit room. Dust motes dance in the air.",
-		Exits:       []string{"north", "south", "east"},
-		Items:       []string{"rusty sword", "old book"},
-		Npcs:        []string{"mysterious figure"},
-		Players:     []string{"other_player"},
+		Description: "You don't see that here.",
+		Exits:       []string{},
+		Items:       []string{},
+		Npcs:        []string{},
+		Players:     []string{},
 	}, nil
 }
 
@@ -216,30 +243,42 @@ func (s *GRPCServer) Inventory(ctx context.Context, req *proto.InventoryRequest)
 		"character_id": req.CharacterId,
 	})
 
-	// TODO: Implement actual inventory logic
-	items := []*proto.Item{
-		{
-			Id:          "item_sword",
-			Name:        "Rusty Sword",
-			Description: "A rusty but serviceable sword",
-			Type:        "weapon",
-			Weight:      3,
-			Properties:  map[string]string{"damage": "1d6+1"},
-		},
-		{
-			Id:          "item_potion",
-			Name:        "Health Potion",
-			Description: "A red liquid that smells of herbs",
-			Type:        "consumable",
-			Weight:      1,
-			Properties:  map[string]string{"healing": "2d4+2"},
-		},
+	// Get items from content loader
+	allItems := s.contentLoader.GetAllItems()
+	items := make([]*proto.Item, 0, len(allItems))
+
+	// Convert loaded items to proto format
+	for _, itemData := range allItems {
+		// Convert properties to string map
+		properties := make(map[string]string)
+		for key, value := range itemData.Properties {
+			if str, ok := value.(string); ok {
+				properties[key] = str
+			} else {
+				properties[key] = fmt.Sprintf("%v", value)
+			}
+		}
+
+		items = append(items, &proto.Item{
+			Id:          itemData.ID,
+			Name:        itemData.Name,
+			Description: itemData.Description,
+			Type:        itemData.Type,
+			Weight:      itemData.Weight,
+			Properties:  properties,
+		})
+	}
+
+	// Calculate capacity
+	totalWeight := int32(0)
+	for _, item := range items {
+		totalWeight += item.Weight
 	}
 
 	return &proto.InventoryResponse{
 		Items:        items,
-		Capacity:     20,
-		UsedCapacity: 4,
+		Capacity:     100, // Default capacity
+		UsedCapacity: totalWeight,
 	}, nil
 }
 
@@ -251,10 +290,46 @@ func (s *GRPCServer) Talk(ctx context.Context, req *proto.TalkRequest) (*proto.T
 		"topic":        req.Topic,
 	})
 
-	// TODO: Implement actual NPC conversation logic
+	// Find NPC by name
+	var npcData *server.NPCData
+	allNPCs := s.contentLoader.GetAllNPCs()
+	for _, npc := range allNPCs {
+		if npc.Name == req.NpcName {
+			npcData = npc
+			break
+		}
+	}
+
+	if npcData == nil {
+		return &proto.TalkResponse{
+			Response:          "You don't see anyone by that name here.",
+			Topics:            []string{},
+			ConversationEnded: true,
+		}, nil
+	}
+
+	// Generate response based on NPC and topic
+	response := fmt.Sprintf("The %s looks at you and says, 'Greetings, traveler.'", npcData.Name)
+	topics := []string{"quest", "rumors", "history", "trade"}
+
+	if req.Topic != "" {
+		switch req.Topic {
+		case "quest":
+			response = "The " + npcData.Name + " mentions there might be work available for brave adventurers."
+		case "rumors":
+			response = "The " + npcData.Name + " whispers about strange happenings in the Fracture Wastes."
+		case "history":
+			response = "The " + npcData.Name + " speaks of the ancient times before the reality fractures."
+		case "trade":
+			response = "The " + npcData.Name + " offers to trade goods, though prices vary with reality stability."
+		default:
+			response = "The " + npcData.Name + " doesn't seem interested in discussing that topic."
+		}
+	}
+
 	return &proto.TalkResponse{
-		Response:          "The mysterious figure looks at you with ancient eyes and says, 'Welcome, traveler.'",
-		Topics:            []string{"quest", "rumors", "history"},
+		Response:          response,
+		Topics:            topics,
 		ConversationEnded: false,
 	}, nil
 }

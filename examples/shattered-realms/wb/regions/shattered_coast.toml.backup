@@ -43,8 +43,19 @@ base_reality_stability = 25
 stability_variance = "1d20"
 
 [locations.fracture_wastes.hazards]
-floating_islands = {   frequency = "common",   effect = "navigation_difficulty += 5; chance_of_fall_damage = 0.3" }
+floating_islands = {
+  frequency = "common",
+  effect = 'navigation_difficulty += 5; chance_of_fall_damage = 0.3'
+}
 
-time_loops = {   frequency = "rare",   trigger = "reality_stability <= 15",   effect = "repeat_last_combat_round(); reality_stability -= 10" }
+time_loops = {
+  frequency = "rare",
+  trigger = 'reality_stability <= 15',
+  effect = 'repeat_last_combat_round(); reality_stability -= 10'
+}
 
-gravity_wells = {   frequency = "uncommon",    area = "50_foot_radius",   effect = "difficult_terrain; strength_save_or_pulled_toward_center" }
+gravity_wells = {
+  frequency = "uncommon", 
+  area = "50_foot_radius",
+  effect = 'difficult_terrain; strength_save_or_pulled_toward_center'
+}
