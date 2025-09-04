@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/solo-seven/platform.drifter.solo7.media/generated/proto/proto"
+	"github.com/solo-seven/platform.drifter.solo7.media/generated/proto"
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
 )
 

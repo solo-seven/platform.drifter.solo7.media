@@ -61,17 +61,17 @@ test-bdd:
 build: build-server build-client
 
 # Build server
-build-server:
+build-server: proto
 	mkdir -p $(BUILD_DIR)
 	$(GOBUILD) -o $(BUILD_DIR)/$(SERVER_BINARY_NAME) ./cmd/server
 
 # Build client
-build-client:
+build-client: proto
 	mkdir -p $(BUILD_DIR)
 	$(GOBUILD) -o $(BUILD_DIR)/$(CLIENT_BINARY_NAME) ./cmd/client
 
 # Generate protobuf files
-proto:
+proto: $(PROTO_DIR)/*.proto
 	protoc --go_out=$(GENERATED_DIR) --go_opt=paths=source_relative \
 		--go-grpc_out=$(GENERATED_DIR) --go-grpc_opt=paths=source_relative \
 		$(PROTO_DIR)/*.proto
