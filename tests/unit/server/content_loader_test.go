@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/logger"
+	"github.com/solo-seven/platform.drifter.solo7.media/internal/server"
 )
 
 // Test config implementation
@@ -33,15 +34,15 @@ func TestEquipmentLoading(t *testing.T) {
 	}
 
 	// Create content repository manager and TOML parser
-	contentRepoManager := NewContentRepositoryManager(gameLogger)
-	tomlParser := NewTOMLParser(gameLogger)
+	contentRepoManager := server.NewContentRepositoryManager(gameLogger)
+	tomlParser := server.NewTOMLParser(gameLogger)
 
 	// Create content loader
-	contentLoader := NewContentLoader(
+	contentLoader := server.NewContentLoader(
 		gameLogger,
 		tomlParser,
 		contentRepoManager,
-		"../../examples/shattered-realms",
+		"../../../examples/shattered-realms",
 	)
 
 	// Load all content
@@ -57,8 +58,8 @@ func TestEquipmentLoading(t *testing.T) {
 	}
 
 	// Find the specific items from equipment.toml
-	var stabilizerCrystal *ItemData
-	var chaosBlade *ItemData
+	var stabilizerCrystal *server.ItemData
+	var chaosBlade *server.ItemData
 
 	for _, item := range allItems {
 		switch item.ID {

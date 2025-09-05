@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/domain"
@@ -103,7 +102,7 @@ func NewContentLoader(
 
 // LoadAllContent loads all content from the shattered-realms directory
 func (cl *ContentLoader) LoadAllContent() error {
-	cl.logger.Info("Loading content from shattered-realms directory", map[string]interface{}{
+	cl.logger.Info("Loading content", map[string]interface{}{
 		"directory": cl.contentDirectory,
 	})
 
@@ -188,16 +187,13 @@ func (cl *ContentLoader) loadFile(filePath string) error {
 		return fmt.Errorf("failed to read file %s: %w", filePath, err)
 	}
 
-	// Preprocess TOML content to fix single quotes
-	processedData := cl.preprocessTOML(data)
-
 	options := domain.TOMLParseOptions{
 		ValidateSchema:    true,
 		ResolveReferences: true,
 		StrictMode:        false,
 	}
 
-	result, err := cl.tomlParser.ParseTOML(processedData, options)
+	result, err := cl.tomlParser.ParseTOML(data, options)
 	if err != nil {
 		return fmt.Errorf("failed to parse file %s: %w", filePath, err)
 	}
@@ -578,17 +574,4 @@ func (cl *ContentLoader) GetAllItems() map[string]*ItemData {
 // GetAllNPCs returns all loaded NPCs
 func (cl *ContentLoader) GetAllNPCs() map[string]*NPCData {
 	return cl.worldData.NPCs
-}
-
-// preprocessTOML fixes common TOML syntax issues
-func (cl *ContentLoader) preprocessTOML(data []byte) []byte {
-	content := string(data)
-
-	// Replace single quotes with double quotes for string values
-	// This is a simple regex that matches single-quoted strings
-	// but avoids replacing single quotes inside double-quoted strings
-	re := regexp.MustCompile(`'([^']*)'`)
-	content = re.ReplaceAllString(content, `"$1"`)
-
-	return []byte(content)
 }
