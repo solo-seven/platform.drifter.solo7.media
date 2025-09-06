@@ -4,8 +4,6 @@ package drifter.mud;
 
 option go_package = "github.com/solo-seven/platform.drifter.solo7.media/generated/proto";
 
-import "google/protobuf/timestamp.proto";
-
 // MUD Service Definition
 service MUDService {
   // Player Actions (gRPC)

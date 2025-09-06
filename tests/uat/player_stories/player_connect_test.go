@@ -1,4 +1,4 @@
-package server
+package player_stories
 
 import (
 	"testing"
@@ -6,8 +6,7 @@ import (
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/server"
 )
 
-// TestServerInitialization verifies the server initializes correctly
-func TestServerInitialization(m *testing.T) {
+func TestPlayerLogin(m *testing.T) {
 	gameStateServer := server.NewGameStateServer()
 	err := gameStateServer.Start("localhost:8080")
 	if err != nil {

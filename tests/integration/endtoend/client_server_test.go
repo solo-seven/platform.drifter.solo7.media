@@ -1,4 +1,4 @@
-package server
+package endtoend
 
 import (
 	"testing"
@@ -6,15 +6,14 @@ import (
 	"github.com/solo-seven/platform.drifter.solo7.media/internal/server"
 )
 
-// TestServerInitialization verifies the server initializes correctly
-func TestServerInitialization(m *testing.T) {
+func TestClientServerConnect(t *testing.T) {
 	gameStateServer := server.NewGameStateServer()
 	err := gameStateServer.Start("localhost:8080")
 	if err != nil {
-		m.Error(err)
+		t.Error(err)
 	}
 	err = gameStateServer.Stop()
 	if err != nil {
-		m.Error(err)
+		t.Error(err)
 	}
 }
