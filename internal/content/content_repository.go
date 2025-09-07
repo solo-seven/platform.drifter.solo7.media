@@ -17,3 +17,16 @@ func NewContentRepository(contentPath string) *ContentRepository {
 		worldBooks:      NewWorldBookRepository(filepath.Join(contentPath, "world_books")),
 	}
 }
+
+func (c *ContentRepository) GameMasterGuide() *GameMasterGuideRepository {
+	return c.gameMasterGuide
+}
+func (c *ContentRepository) PlayerGuide() *PlayerGuideRepository {
+	return c.playerGuide
+}
+func (c *ContentRepository) MonsterManual() *MonsterManualRepository {
+	return c.monsterManual
+}
+func (c *ContentRepository) WorldBooks() *WorldBookRepository {
+	return c.worldBooks
+}

@@ -10,6 +10,8 @@ service MUDService {
   rpc Login(LoginRequest) returns (LoginResponse);
   rpc ServerList(ServerListRequest) returns (ServerListResponse);
   rpc AvatarConnect(AvatarConnectRequest) returns (AvatarConnectResponse);
+  rpc AvatarCommand(AvatarCommandRequest) returns (AvatarCommandResponse);
+  rpc AvatarMessages(AvatarMessageRequest) returns (AvatarMessageResponse);
 
   // Admin Commands
   rpc AdminCommand(AdminCommandRequest) returns (AdminCommandResponse);
@@ -59,6 +61,29 @@ message AvatarConnectResponse {
   string status = 1;
   string message = 2;
   AvatarState avatar_state = 3;
+}
+
+message AvatarCommandRequest {
+  AvatarAction action = 1;
+}
+
+message AvatarCommandResponse {
+  string avatar_id = 1;
+  string result = 2;
+}
+
+message AvatarMessageRequest {
+  string avatar_id = 1;
+}
+
+message AvatarMessageResponse {
+  string avatar_id = 1;
+  repeated ServerMessage messages = 2;
+}
+
+message ServerMessage {
+  string server_id = 1;
+  string message = 2;
 }
 
 // World Domain Model
