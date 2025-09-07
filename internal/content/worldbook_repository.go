@@ -1,3 +1,9 @@
 package content
 
-type WorldBookRepository struct{}
+type WorldBookRepository struct {
+	baseDirectory string
+}
+
+func NewWorldBookRepository(baseDirectory string) *WorldBookRepository {
+	return &WorldBookRepository{baseDirectory}
+}

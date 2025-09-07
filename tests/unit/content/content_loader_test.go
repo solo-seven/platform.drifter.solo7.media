@@ -7,7 +7,7 @@ import (
 )
 
 func TestFullSimpleContentLoading(m *testing.T) {
-	contentRepository := content.NewContentRepository()
+	contentRepository := content.NewContentRepository("./examples/simple/")
 	if contentRepository == nil {
 		m.Error("Content repository is nil")
 	}
